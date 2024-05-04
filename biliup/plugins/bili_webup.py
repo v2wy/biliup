@@ -539,7 +539,7 @@ class BiliBili:
         endpoint = ret["endpoint"]
         biz_id = ret["biz_id"]
         upos_uri = ret["upos_uri"]
-        url = f"https:{endpoint}/{upos_uri.replace('upos://', '')}"  # 视频上传路径
+        url = f"https://p.8828888.xyz/proxy/https:{endpoint}/{upos_uri.replace('upos://', '')}"  # 视频上传路径
         headers = {
             "X-Upos-Auth": auth
         }
