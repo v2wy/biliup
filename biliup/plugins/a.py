@@ -87,6 +87,8 @@ class StreamLink(DownloadBase):
         info = json.loads(result)
 
         self.raw_stream_url = res.url
+        if type(info) is dict and info and 'streams' in info and 'best' in info['streams']:
+            self.raw_stream_url = info['streams']['best']['url']
         self.room_title = ''
         if type(info) is dict and info and 'metadata' in info and 'title' in info['metadata']:
             self.room_title = info['metadata']['title']
