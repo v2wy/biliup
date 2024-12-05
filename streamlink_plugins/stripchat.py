@@ -49,7 +49,6 @@ class Striphat(Plugin):
 
     def _get_streams(self):
         is_online, hls_url = self.is_online()
-        print(is_online, hls_url)
         if not is_online:
             log.error("This stream is currently offline")
             return

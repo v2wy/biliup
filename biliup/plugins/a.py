@@ -1,24 +1,16 @@
-import io
 import json
 import os.path
-import random
-import re
-import socket
 import subprocess
-import time
-from typing import AsyncGenerator, List
-from urllib.parse import urlencode
 
 import yt_dlp
 from streamlink import NoPluginError
 
-from biliup.common.util import client
 from biliup.config import config
-from biliup.Danmaku import DanmakuClient
 from . import logger
 from ..engine.decorators import Plugin
-from ..engine.download import DownloadBase, BatchCheck
+from ..engine.download import DownloadBase
 import streamlink
+from .afreecaTV import AfreecaTV
 
 
 class Ytdlp(DownloadBase):
@@ -56,26 +48,29 @@ class Ytdlp(DownloadBase):
 
 
 class StreamLink(DownloadBase):
+    session: streamlink.session.Streamlink
+
     def __init__(self, fname, url, suffix='flv'):
         DownloadBase.__init__(self, fname, url, suffix=suffix)
-
-    async def acheck_stream(self, is_check=False):
-        if is_check:
-            return True
-        session = streamlink.session.Streamlink({
+        self.session = streamlink.session.Streamlink({
             'stream-segment-timeout': 60,
             'hls-segment-queue-threshold': 10,
             'stream-segment-threads': 10
         })
         streamlink_plugins_dir = 'streamlink_plugins'
         if os.path.exists(streamlink_plugins_dir):
-            session.plugins.load_path(streamlink_plugins_dir)
+            self.session.plugins.load_path(streamlink_plugins_dir)
+
+    async def acheck_stream(self, is_check=False):
+        if is_check:
+            return True
         try:
-            plugin_name, plugin_type, url = session.resolve_url(self.url)
+            plugin_name, plugin_type, url = self.session.resolve_url(self.url)
+            logger.error(f'{url}匹配到插件 ' + plugin_name)
         except NoPluginError:
             logger.error('url没有匹配到插件 ' + self.url)
             return False
-        streams = session.streams(self.url)
+        streams = self.session.streams(self.url)
         if streams is None:
             return False
 
@@ -84,8 +79,17 @@ class StreamLink(DownloadBase):
         if res is None:
             return False
 
+        result = subprocess.run(
+            ['streamlink', '--plugin-dir', 'streamlink_plugins', '-j', '--twitch-proxy-playlist',
+             'https://lb-eu.cdn-perfprod.com', url],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout
+
+        info = json.loads(result)
+
         self.raw_stream_url = res.url
         self.room_title = ''
+        if type(info) is dict and info and 'metadata' in info and 'title' in info['metadata']:
+            self.room_title = info['metadata']['title']
 
         return True
 
@@ -100,5 +104,13 @@ class Stripchat(StreamLink):
     def __init__(self, fname, url, suffix='flv'):
         StreamLink.__init__(self, fname, url, suffix=suffix)
         self.downloader = 'ffmpeg'
-    # def download(self):
-    #     pass
+
+
+@Plugin.download(regexp=r'(?:https?://)?(?:(?:www|go|m)\.)?twitch\.tv/(?P<id>[0-9_a-zA-Z]+)')
+class Twitch(StreamLink):
+    pass
+
+
+@Plugin.download(regexp=r"https?://(.*?)\.sooplive\.co\.kr/(?P<username>\w+)(?:/\d+)?")
+class Sooplive(AfreecaTV):
+    pass

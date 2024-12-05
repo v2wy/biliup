@@ -17,7 +17,7 @@ from streamlink.plugin.api import validate
 import re
 
 # VALID_URL_BASE = r'https?://(?:(?:www|m)\.)?youtube\.orz\.com/(?P<id>.*?)\??(.*?)'
-VALID_URL_BASE = r'(?:https?://)?(?:(?:www|m)\.)?youtube\.orz\.com/@(?P<id>.+)(\/.*)?'
+VALID_URL_BASE = r'(?:https?://)?(?:(?:www|m)\.)?youtube\.com/@(?P<id>.+)(\/.*)?'
 session = requests.session()
 browseIdMap = {}
 fake_headers = {
