@@ -44,6 +44,7 @@ class Ytdlp(DownloadBase):
             return False
         self.raw_stream_url = info['url']
         self.room_title = info['title']
+        self.fake_headers = info['http_headers'].data
         return True
 
 
@@ -89,6 +90,7 @@ class StreamLink(DownloadBase):
         self.raw_stream_url = res.url
         if type(info) is dict and info and 'streams' in info and 'best' in info['streams']:
             self.raw_stream_url = info['streams']['best']['url']
+            self.fake_headers = info['streams']['best']['headers']
         self.room_title = ''
         if type(info) is dict and info and 'metadata' in info and 'title' in info['metadata']:
             self.room_title = info['metadata']['title']
@@ -100,11 +102,17 @@ class StreamLink(DownloadBase):
 class Chaturbate(Ytdlp):
     pass
 
+# https://17.live/en-US/profile/r/15519172
+# https://17.live/en-US/live/15519172
+@Plugin.download(regexp=r'(?:https?://)?(17\.live/[a-zA-z-]+/(profile/r|live))/(?P<id>.*?)')
+class X17Live(Ytdlp):
+    pass
+
 
 @Plugin.download(regexp=r'(?:https?://)?(zh\.)?(stripchat\.com)/(?P<id>.*?)')
 class Stripchat(StreamLink):
     def __init__(self, fname, url, suffix='flv'):
-        StreamLink.__init__(self, fname, url, suffix=suffix)
+        super().__init__(fname, url, suffix=suffix)
         self.downloader = 'ffmpeg'
 
 
