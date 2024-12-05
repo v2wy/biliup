@@ -121,6 +121,12 @@ class Twitch(StreamLink):
     pass
 
 
+# https://www.tiktok.com/@ignobitaofficial/live
+@Plugin.download(regexp=r'(?:https?://)?(?:(?:www|go|m)\.)?tiktok\.com/@(?P<id>[0-9_a-zA-Z]+)/live')
+class Tiktok(StreamLink):
+    pass
+
+
 @Plugin.download(regexp=r"https?://(.*?)\.sooplive\.co\.kr/(?P<username>\w+)(?:/\d+)?")
 class Sooplive(AfreecaTV):
     def __init__(self, fname, url, suffix='flv'):
