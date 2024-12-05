@@ -1,12 +1,5 @@
-import copy
-import os
-import shutil
-from typing import Optional
-
 import yt_dlp
 
-from yt_dlp import DownloadError
-from yt_dlp.utils import DateRange
 from biliup.config import config
 from ..engine.decorators import Plugin
 from . import logger
@@ -16,7 +9,6 @@ from urllib.parse import urlparse
 from streamlink.plugin.api import validate
 import re
 
-# VALID_URL_BASE = r'https?://(?:(?:www|m)\.)?youtube\.orz\.com/(?P<id>.*?)\??(.*?)'
 VALID_URL_BASE = r'(?:https?://)?(?:(?:www|m)\.)?youtube\.com/@(?P<id>.+)(\/.*)?'
 session = requests.session()
 browseIdMap = {}
