@@ -113,4 +113,6 @@ class Twitch(StreamLink):
 
 @Plugin.download(regexp=r"https?://(.*?)\.sooplive\.co\.kr/(?P<username>\w+)(?:/\d+)?")
 class Sooplive(AfreecaTV):
-    pass
+    def __init__(self, fname, url, suffix='flv'):
+        self.url = str(url).replace('sooplive.co.kr', 'afreecatv.com')
+        super().__init__(fname, self.url, suffix)
