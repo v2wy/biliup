@@ -136,6 +136,12 @@ class Twitch(StreamLink):
 class Tiktok(StreamLink):
     pass
 
+# https://www.pandalive.co.kr/live/play/queen486
+@Plugin.download(regexp=r'(?:https?://)?(?:(?:www)\.)?pandalive\.co\.kr/live/play/(?P<id>[0-9_a-zA-Z]+)')
+class Pandalive(StreamLink):
+    def __init__(self, fname, url, suffix='mp4'):
+        super().__init__(fname, url, suffix)
+        self.downloader = 'ffmpeg'
 
 @Plugin.download(regexp=r"https?://(.*?)\.afreecatv\.com/(?P<username>\w+)(?:/\d+)?")
 class Afreeca(AfreecaTV):
