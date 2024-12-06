@@ -102,6 +102,7 @@ class StreamLink(DownloadBase):
 class Chaturbate(Ytdlp):
     pass
 
+
 # https://17.live/en-US/profile/r/15519172
 # https://17.live/en-US/live/15519172
 @Plugin.download(regexp=r'(?:https?://)?(17\.live/[a-zA-z-]+/(profile/r|live))/(?P<id>.*?)')
@@ -109,9 +110,17 @@ class X17Live(Ytdlp):
     pass
 
 
+# https://chzzk.naver.com/live/1b0561f3051c10a24b9d8ec9a6cb3374
+@Plugin.download(regexp=r'(?:https?://)?(chzzk\.naver\.com)/live/(?P<id>.*?)')
+class Chzzk(Ytdlp):
+    def __init__(self, fname, url, suffix='mp4'):
+        super().__init__(fname, url, suffix=suffix)
+        self.downloader = 'ffmpeg'
+
+
 @Plugin.download(regexp=r'(?:https?://)?(zh\.)?(stripchat\.com)/(?P<id>.*?)')
 class Stripchat(StreamLink):
-    def __init__(self, fname, url, suffix='flv'):
+    def __init__(self, fname, url, suffix='mp4'):
         super().__init__(fname, url, suffix=suffix)
         self.downloader = 'ffmpeg'
 
@@ -127,8 +136,8 @@ class Tiktok(StreamLink):
     pass
 
 
-@Plugin.download(regexp=r"https?://(.*?)\.sooplive\.co\.kr/(?P<username>\w+)(?:/\d+)?")
-class Sooplive(AfreecaTV):
-    def __init__(self, fname, url, suffix='flv'):
-        self.url = str(url).replace('sooplive.co.kr', 'afreecatv.com')
-        super().__init__(fname, self.url, suffix)
+@Plugin.download(regexp=r"https?://(.*?)\.afreecatv\.com/(?P<username>\w+)(?:/\d+)?")
+class Afreeca(AfreecaTV):
+    def __init__(self, fname, url, suffix='mp4'):
+        super().__init__(fname, url, suffix)
+        self.downloader = 'ffmpeg'
