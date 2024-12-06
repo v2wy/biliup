@@ -65,7 +65,7 @@ class StreamLink(DownloadBase):
     async def acheck_stream(self, is_check=False):
         try:
             plugin_name, plugin_type, url = self.session.resolve_url(self.url)
-            logger.info(f'{url}匹配到插件 ' + plugin_name)
+            logger.debug(f'{url}匹配到插件 ' + plugin_name)
         except NoPluginError:
             logger.error('url没有匹配到插件 ' + self.url)
             return False

@@ -39,7 +39,7 @@ class Youtube(DownloadBase):
         self.download_url = None
 
     async def acheck_stream(self, is_check=False):
-        logger.info("is_check: " + str(is_check))
+        # logger.info("is_check: " + str(is_check))
         if is_check:
             return True
         channel = re.match(VALID_URL_BASE, self.url).group('id')
