@@ -19,8 +19,6 @@ class Ytdlp(DownloadBase):
         self.youtube_cookie = config.get('user', {}).get('youtube_cookie')
 
     async def acheck_stream(self, is_check=False):
-        if is_check:
-            return True
         with yt_dlp.YoutubeDL({
             'download_archive': 'archive.txt',
             'cookiefile': self.youtube_cookie,
@@ -42,6 +40,8 @@ class Ytdlp(DownloadBase):
         if info['live_status'] != 'is_live':
             logger.info(f'[{self.url}] live_status不为is_live ' + json.dumps(info, ensure_ascii=False))
             return False
+        if is_check:
+            return True
         self.raw_stream_url = info['url']
         self.room_title = info['title']
         self.fake_headers = info['http_headers'].data
@@ -63,8 +63,6 @@ class StreamLink(DownloadBase):
             self.session.plugins.load_path(streamlink_plugins_dir)
 
     async def acheck_stream(self, is_check=False):
-        if is_check:
-            return True
         try:
             plugin_name, plugin_type, url = self.session.resolve_url(self.url)
             logger.info(f'{url}匹配到插件 ' + plugin_name)
@@ -79,6 +77,9 @@ class StreamLink(DownloadBase):
 
         if res is None:
             return False
+
+        if is_check:
+            return True
 
         result = subprocess.run(
             ['streamlink', '--plugin-dir', 'streamlink_plugins', '-j', '--twitch-proxy-playlist',
