@@ -1,4 +1,5 @@
 import time
+import traceback
 from typing import Optional, Dict
 
 import requests
@@ -21,7 +22,7 @@ QUALITIES = ["original", "hd4k", "hd", "sd"]
 
 @Plugin.download(regexp=r"https?://(.*?)\.sooplive\.co\.kr/(?P<username>\w+)(?:/\d+)?")
 class AfreecaTV(DownloadBase):
-    def __init__(self, fname, url, suffix='flv'):
+    def __init__(self, fname, url, suffix='mp4'):
         super().__init__(fname, url, suffix)
         if AfreecaTVUtils.get_cookie():
             self.fake_headers['cookie'] = ';'.join(
@@ -83,6 +84,7 @@ class AfreecaTV(DownloadBase):
             self.raw_stream_url = view_info["view_url"] + "?aid=" + aid_info["CHANNEL"]["AID"]
         except:
             logger.warning(f"{AfreecaTV.__name__}: {self.url}: 获取错误，本次跳过")
+            traceback.print_exc()
             return False
 
         return True
