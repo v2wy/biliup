@@ -114,7 +114,7 @@ class X17Live(Ytdlp):
 # https://chzzk.naver.com/live/1b0561f3051c10a24b9d8ec9a6cb3374
 @Plugin.download(regexp=r'(?:https?://)?(chzzk\.naver\.com)/live/(?P<id>.*?)')
 class Chzzk(Ytdlp):
-    def __init__(self, fname, url, suffix='mp4'):
+    def __init__(self, fname, url, suffix='ts'):
         super().__init__(fname, url, suffix=suffix)
         self.downloader = 'ffmpeg'
         self.is_download = True
@@ -122,7 +122,7 @@ class Chzzk(Ytdlp):
 
 @Plugin.download(regexp=r'(?:https?://)?(zh\.)?(stripchat\.com)/(?P<id>.*?)')
 class Stripchat(StreamLink):
-    def __init__(self, fname, url, suffix='mp4'):
+    def __init__(self, fname, url, suffix='ts'):
         super().__init__(fname, url, suffix=suffix)
         self.downloader = 'ffmpeg'
         self.is_download = True
@@ -142,15 +142,7 @@ class Tiktok(StreamLink):
 # https://www.pandalive.co.kr/live/play/queen486
 @Plugin.download(regexp=r'(?:https?://)?(?:(?:www)\.)?pandalive\.co\.kr/live/play/(?P<id>[0-9_a-zA-Z]+)')
 class Pandalive(StreamLink):
-    def __init__(self, fname, url, suffix='mp4'):
-        super().__init__(fname, url, suffix)
-        self.downloader = 'ffmpeg'
-        self.is_download = True
-
-
-@Plugin.download(regexp=r"https?://(.*?)\.afreecatv\.com/(?P<username>\w+)(?:/\d+)?")
-class Afreeca(AfreecaTV):
-    def __init__(self, fname, url, suffix='mp4'):
+    def __init__(self, fname, url, suffix='ts'):
         super().__init__(fname, url, suffix)
         self.downloader = 'ffmpeg'
         self.is_download = True
