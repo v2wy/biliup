@@ -17,6 +17,9 @@ class Ytdlp(DownloadBase):
         DownloadBase.__init__(self, fname, url, suffix=suffix)
         self.youtube_cookie = config.get('user', {}).get('youtube_cookie')
 
+        self.is_download = True
+        self.downloader = 'ffmpeg'
+
     async def acheck_stream(self, is_check=False):
         with yt_dlp.YoutubeDL({
             'download_archive': 'archive.txt',
@@ -60,6 +63,9 @@ class StreamLink(DownloadBase):
         streamlink_plugins_dir = 'streamlink_plugins'
         if os.path.exists(streamlink_plugins_dir):
             self.session.plugins.load_path(streamlink_plugins_dir)
+
+        self.is_download = True
+        self.downloader = 'ffmpeg'
 
     async def acheck_stream(self, is_check=False):
         try:
@@ -107,24 +113,21 @@ class Chaturbate(Ytdlp):
 # https://17.live/en-US/live/15519172
 @Plugin.download(regexp=r'(?:https?://)?(17\.live/[a-zA-z-]+/(profile/r|live))/(?P<id>.*?)')
 class X17Live(Ytdlp):
-    pass
+    def __init__(self, fname, url, suffix='mp4'):
+        super().__init__(fname, url, suffix)
+        self.is_download = False
+        self.downloader = 'stream-gears'
 
 
 # https://chzzk.naver.com/live/1b0561f3051c10a24b9d8ec9a6cb3374
 @Plugin.download(regexp=r'(?:https?://)?(chzzk\.naver\.com)/live/(?P<id>.*?)')
 class Chzzk(Ytdlp):
-    def __init__(self, fname, url, suffix='mp4'):
-        super().__init__(fname, url, suffix=suffix)
-        self.downloader = 'ffmpeg'
-        self.is_download = True
+    pass
 
 
 @Plugin.download(regexp=r'(?:https?://)?(zh\.)?(stripchat\.com)/(?P<id>.*?)')
 class Stripchat(StreamLink):
-    def __init__(self, fname, url, suffix='mp4'):
-        super().__init__(fname, url, suffix=suffix)
-        self.downloader = 'ffmpeg'
-        self.is_download = True
+    pass
 
 
 @Plugin.download(regexp=r'(?:https?://)?(?:(?:www|go|m)\.)?twitch\.tv/(?P<id>[0-9_a-zA-Z]+)')
@@ -135,13 +138,13 @@ class Twitch(StreamLink):
 # https://www.tiktok.com/@ignobitaofficial/live
 @Plugin.download(regexp=r'(?:https?://)?(?:(?:www|go|m)\.)?tiktok\.com/@(?P<id>[0-9_a-zA-Z]+)/live')
 class Tiktok(StreamLink):
-    pass
+    def __init__(self, fname, url, suffix='mp4'):
+        super().__init__(fname, url, suffix)
+        self.is_download = False
+        self.downloader = 'stream-gears'
 
 
 # https://www.pandalive.co.kr/live/play/queen486
 @Plugin.download(regexp=r'(?:https?://)?(?:(?:www)\.)?pandalive\.co\.kr/live/play/(?P<id>[0-9_a-zA-Z]+)')
 class Pandalive(StreamLink):
-    def __init__(self, fname, url, suffix='mp4'):
-        super().__init__(fname, url, suffix)
-        self.downloader = 'ffmpeg'
-        self.is_download = True
+    pass
