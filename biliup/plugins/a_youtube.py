@@ -40,8 +40,8 @@ class Youtube(DownloadBase):
 
     async def acheck_stream(self, is_check=False):
         # logger.info("is_check: " + str(is_check))
-        if is_check:
-            return True
+        # if is_check:
+        #     return True
         channel = re.match(VALID_URL_BASE, self.url).group('id')
         isLive, streamings = self.get_channel_live_info(channel)
         if not isLive:
