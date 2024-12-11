@@ -42,8 +42,6 @@ class Ytdlp(DownloadBase):
         if info['live_status'] != 'is_live':
             logger.info(f'[{self.url}] live_status不为is_live ' + json.dumps(info, ensure_ascii=False))
             return False
-        if is_check:
-            return True
         self.raw_stream_url = info['url']
         self.room_title = info['title']
         self.fake_headers = info['http_headers'].data
@@ -82,9 +80,6 @@ class StreamLink(DownloadBase):
 
         if res is None:
             return False
-
-        if is_check:
-            return True
 
         result = subprocess.run(
             ['streamlink', '--plugin-dir', 'streamlink_plugins', '-j', '--twitch-proxy-playlist',

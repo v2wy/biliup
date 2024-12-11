@@ -59,9 +59,6 @@ class AfreecaTV(DownloadBase):
 
             self.room_title = channel_info["CHANNEL"]["TITLE"]
 
-            if is_check:
-                return True
-
             aid_info = (await biliup.common.util.client.post(CHANNEL_API_URL, data={
                 "bid": username,
                 "bno": channel_info["CHANNEL"]["BNO"],
