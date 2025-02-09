@@ -145,7 +145,7 @@ class Youtube(DownloadBase):
             status = self.get_value_from_json(content,
                                               'richItemRenderer.content.videoWithContextRenderer.thumbnailOverlays[0].thumbnailOverlayTimeStatusRenderer.style')
             if status != 'LIVE':
-                break
+                continue
             streaming.append({
                 'video_id': self.get_value_from_json(content,
                                                      'richItemRenderer.content.videoWithContextRenderer.videoId'),
