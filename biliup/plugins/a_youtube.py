@@ -172,6 +172,8 @@ class Youtube(DownloadBase):
                     return None
                 result = result[key][index]
             else:
+                if key not in result:
+                    return None
                 result = result[key]
 
         return result
