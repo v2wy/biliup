@@ -22,7 +22,7 @@ fake_headers = {
 
 @Plugin.download(regexp=VALID_URL_BASE)
 class Youtube(DownloadBase):
-    def __init__(self, fname, url, suffix='flv'):
+    def __init__(self, fname, url, suffix='mp4'):
         super().__init__(fname, url, suffix)
         self.ytb_danmaku = config.get('ytb_danmaku', False)
         self.ytb_danmaku = False
