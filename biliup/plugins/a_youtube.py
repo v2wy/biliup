@@ -1,3 +1,5 @@
+import asyncio
+
 import yt_dlp
 
 from biliup.config import config
@@ -177,3 +179,30 @@ class Youtube(DownloadBase):
                 result = result[key]
 
         return result
+
+
+VALID_URL_BASE = r'(?:https?://)?(?:(?:www|m)\.)?youtube\.com/watch\?v=(?P<vod_id>.+)'
+@Plugin.download(regexp=VALID_URL_BASE)
+class YoutubeVideo(DownloadBase):
+    def __init__(self, fname, url, suffix='mp4'):
+        super().__init__(fname, url, suffix)
+        self.youtube_cookie = config.get('user', {}).get('youtube_cookie')
+
+    async def acheck_stream(self, is_check=False):
+        vod_id = re.match(VALID_URL_BASE, self.url).group('vod_id')
+        with yt_dlp.YoutubeDL({
+            'download_archive': 'archive.txt',
+            'cookiefile': self.youtube_cookie,
+            'ignoreerrors': True,
+            'extractor_retries': 0,
+        }) as ydl:
+            video_url = f"https://www.youtube.com/watch?v={vod_id}"
+            info = ydl.extract_info(video_url, download=False)
+            if not info:
+                return False
+        live_status = info['live_status']
+        if live_status == 'is_live':
+            self.raw_stream_url = info['url']
+            self.room_title = info['title']
+            return True
+        return False
