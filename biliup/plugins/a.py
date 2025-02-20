@@ -104,6 +104,11 @@ class Chaturbate(Ytdlp):
     pass
 
 
+@Plugin.download(regexp=r'(?:https?://)?(twitcasting\.tv)/(?P<id>.*?)/')
+class Twitcasting(Ytdlp):
+    pass
+
+
 # https://17.live/en-US/profile/r/15519172
 # https://17.live/en-US/live/15519172
 @Plugin.download(regexp=r'(?:https?://)?(17\.live/[a-zA-z-]+/(profile/r|live))/(?P<id>.*?)')
