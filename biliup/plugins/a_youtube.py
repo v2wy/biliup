@@ -181,15 +181,15 @@ class Youtube(DownloadBase):
         return result
 
 
-VALID_URL_BASE = r'(?:https?://)?(?:(?:www|m)\.)?youtube\.com/watch\?v=(?P<vod_id>.+)'
-@Plugin.download(regexp=VALID_URL_BASE)
+VALID_VIDEO_URL_BASE = r'(?:https?://)?(?:(?:www|m)\.)?youtube\.com/watch\?v=(?P<vod_id>.+)'
+@Plugin.download(regexp=VALID_VIDEO_URL_BASE)
 class YoutubeVideo(DownloadBase):
     def __init__(self, fname, url, suffix='mp4'):
         super().__init__(fname, url, suffix)
         self.youtube_cookie = config.get('user', {}).get('youtube_cookie')
 
     async def acheck_stream(self, is_check=False):
-        vod_id = re.match(VALID_URL_BASE, self.url).group('vod_id')
+        vod_id = re.match(VALID_VIDEO_URL_BASE, self.url).group('vod_id')
         with yt_dlp.YoutubeDL({
             'download_archive': 'archive.txt',
             'cookiefile': self.youtube_cookie,
