@@ -2,6 +2,7 @@ import json
 import os.path
 import subprocess
 
+import streamlink
 import yt_dlp
 from streamlink import NoPluginError
 
@@ -9,11 +10,10 @@ from biliup.config import config
 from . import logger
 from ..engine.decorators import Plugin
 from ..engine.download import DownloadBase
-import streamlink
 
 
 class Ytdlp(DownloadBase):
-    def __init__(self, fname, url, suffix='mp4'):
+    def __init__(self, fname, url, suffix='mkv'):
         DownloadBase.__init__(self, fname, url, suffix=suffix)
         self.youtube_cookie = config.get('user', {}).get('youtube_cookie')
 
@@ -51,7 +51,7 @@ class Ytdlp(DownloadBase):
 class StreamLink(DownloadBase):
     session: streamlink.session.Streamlink
 
-    def __init__(self, fname, url, suffix='mp4'):
+    def __init__(self, fname, url, suffix='mkv'):
         DownloadBase.__init__(self, fname, url, suffix=suffix)
         self.session = streamlink.session.Streamlink({
             'stream-segment-timeout': 60,
@@ -113,7 +113,7 @@ class Twitcasting(Ytdlp):
 # https://17.live/en-US/live/15519172
 @Plugin.download(regexp=r'(?:https?://)?(17\.live/[a-zA-z-]+/(profile/r|live))/(?P<id>.*?)')
 class X17Live(Ytdlp):
-    def __init__(self, fname, url, suffix='mp4'):
+    def __init__(self, fname, url, suffix='mkv'):
         super().__init__(fname, url, suffix)
         self.is_download = False
         self.downloader = 'stream-gears'
@@ -139,7 +139,7 @@ class Twitch(StreamLink):
 # https://www.tiktok.com/@ignobitaofficial/live
 @Plugin.download(regexp=r'(?:https?://)?(?:(?:www|go|m)\.)?tiktok\.com/@(?P<id>[0-9_a-zA-Z]+)/live')
 class Tiktok(StreamLink):
-    def __init__(self, fname, url, suffix='mp4'):
+    def __init__(self, fname, url, suffix='mkv'):
         super().__init__(fname, url, suffix)
         self.is_download = False
         self.downloader = 'stream-gears'
