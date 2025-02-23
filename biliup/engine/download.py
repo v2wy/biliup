@@ -102,7 +102,7 @@ class DownloadBase(ABC):
                 if self.downloader == 'streamlink' and '.flv' not in parsed_url_path:
                     return self.ffmpeg_download(use_streamlink=True)
                 else:
-                    return self.ffmpeg_download()
+                    return self.ffmpeg_segment_download()
             else:
                 logger.error("未安装 FFMpeg 或不存在于 PATH 内，本次下载使用 stream-gears")
                 logger.debug("Current user's PATH is:" + os.getenv("PATH"))
