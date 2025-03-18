@@ -120,8 +120,7 @@ class X17Live(Ytdlp):
 
 
 # https://chzzk.naver.com/live/1b0561f3051c10a24b9d8ec9a6cb3374
-# https://chzzk.naver.com/1b0561f3051c10a24b9d8ec9a6cb3374
-@Plugin.download(regexp=r'(?:https?://)?(chzzk\.naver\.com)/(live/)?(?P<id>.*?)')
+@Plugin.download(regexp=r'(?:https?://)?(chzzk\.naver\.com)/live/(?P<id>.*?)')
 class Chzzk(Ytdlp):
     pass
 
