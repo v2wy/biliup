@@ -1,13 +1,12 @@
 import json
-import random
 import time
 
-import biliup.common.util
+import requests_html
+
 from biliup.config import config
 from ..engine.decorators import Plugin
 from ..engine.download import DownloadBase
 from ..plugins import logger
-import requests_html
 
 
 @Plugin.download(regexp=r'(?:https?://)?(?:(?:live|www|v)\.)?(kuaishou)\.com')
@@ -33,13 +32,13 @@ class Kuaishou(DownloadBase):
         # 首页低风控生成did
         res = session.get("https://live.kuaishou.com", timeout=5)
         time.sleep(3)
-        # raw_json = parse_complex_json(res.text.split('__INITIAL_STATE__=')[1])
-        # obj = json.loads(raw_json)
-        # id = obj['home']['homeLiveStream'][0]['id']
-        # url = f'https://live.kuaishou.com/u/{id}'
-        # logger.info("请求：" + url)
-        # session.get(url)
-        # time.sleep(2)
+        raw_json = parse_complex_json(res.text.split('__INITIAL_STATE__=')[1])
+        obj = json.loads(raw_json)
+        id = obj['home']['homeLiveStream'][0]['id']
+        url = f'https://live.kuaishou.com/u/{id}'
+        logger.info("请求：" + url)
+        session.get(url)
+        time.sleep(2)
 
         # # 不暂停似乎容易风控
         # times = 3 + random.random()
@@ -93,3 +92,23 @@ def get_kwaiId(url):
         if key in url:
             kwaiId = url.split(key)[1]
             return kwaiId
+
+
+def parse_complex_json(script):
+    stack = []
+    start_index = script.find('{')
+    if start_index == -1:
+        return None
+
+    stack.append('{')
+    end_index = start_index + 1
+
+    while end_index < len(script) and stack:
+        char = script[end_index]
+        if char == '{':
+            stack.append('{')
+        elif char == '}':
+            stack.pop()
+        end_index += 1
+
+    return script[start_index:end_index]
