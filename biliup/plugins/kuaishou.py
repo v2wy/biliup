@@ -1,4 +1,5 @@
 import json
+import random
 import time
 
 import biliup.common.util
@@ -6,6 +7,7 @@ from biliup.config import config
 from ..engine.decorators import Plugin
 from ..engine.download import DownloadBase
 from ..plugins import logger
+import requests_html
 
 
 @Plugin.download(regexp=r'(?:https?://)?(?:(?:live|www|v)\.)?(kuaishou)\.com')
@@ -27,18 +29,17 @@ class Kuaishou(DownloadBase):
 
         plugin_msg = f"Kuaishou - {room_id}"
 
-        # with requests.Session() as s:
-        biliup.common.util.client.headers = self.fake_headers.copy()
+        session = requests_html.HTMLSession()
         # 首页低风控生成did
-        res = await biliup.common.util.client.get("https://live.kuaishou.com", timeout=5)
+        res = session.get("https://live.kuaishou.com", timeout=5)
         time.sleep(3)
-        raw_json = parse_complex_json(res.text.split('__INITIAL_STATE__=')[1])
-        obj = json.loads(raw_json)
-        id = obj['home']['homeLiveStream'][0]['id']
-        url = f'https://live.kuaishou.com/u/{id}'
-        logger.info("请求：" + url)
-        await biliup.common.util.client.get(url)
-        time.sleep(2)
+        # raw_json = parse_complex_json(res.text.split('__INITIAL_STATE__=')[1])
+        # obj = json.loads(raw_json)
+        # id = obj['home']['homeLiveStream'][0]['id']
+        # url = f'https://live.kuaishou.com/u/{id}'
+        # logger.info("请求：" + url)
+        # session.get(url)
+        # time.sleep(2)
 
         # # 不暂停似乎容易风控
         # times = 3 + random.random()
@@ -46,13 +47,13 @@ class Kuaishou(DownloadBase):
         # time.sleep(times)
 
         err_keys = ["错误代码22", "主播尚未开播"]
-        html = (await biliup.common.util.client.get(f"https://live.kuaishou.com/u/{room_id}", timeout=5)).text
+        html = (session.get(f"https://live.kuaishou.com/u/{room_id}", timeout=5)).text
         for key in err_keys:
             if key in html:
                 logger.debug(f"{plugin_msg}: {key}")
                 return False
 
-        room_info = (await biliup.common.util.client.get(
+        room_info = (session.get(
             f"https://live.kuaishou.com/live_api/liveroom/livedetail?principalId={room_id}",
             timeout=5)).json()['data']
 
@@ -92,23 +93,3 @@ def get_kwaiId(url):
         if key in url:
             kwaiId = url.split(key)[1]
             return kwaiId
-
-
-def parse_complex_json(script):
-    stack = []
-    start_index = script.find('{')
-    if start_index == -1:
-        return None
-
-    stack.append('{')
-    end_index = start_index + 1
-
-    while end_index < len(script) and stack:
-        char = script[end_index]
-        if char == '{':
-            stack.append('{')
-        elif char == '}':
-            stack.pop()
-        end_index += 1
-
-    return script[start_index:end_index]
