@@ -122,7 +122,10 @@ class X17Live(Ytdlp):
 # https://chzzk.naver.com/live/1b0561f3051c10a24b9d8ec9a6cb3374
 @Plugin.download(regexp=r'(?:https?://)?(chzzk\.naver\.com)/live/(?P<id>.*?)')
 class Chzzk(Ytdlp):
-    pass
+    def __init__(self, fname, url, suffix='mkv'):
+        super().__init__(fname, url, suffix)
+        self.is_download = False
+        self.downloader = 'streamlink'
 
 
 @Plugin.download(regexp=r'(?:https?://)?(zh\.)?(stripchat\.com)/(?P<id>.*?)')
