@@ -71,6 +71,7 @@ class Kuaishou(DownloadBase):
             logger.error(f"{plugin_msg}: {room_info}")
             return False
 
+        logger.info(f"直播间信息: {room_info}")
         if is_check:
             return True
 
