@@ -51,7 +51,7 @@ class Kuaishou(DownloadBase):
         html = (session.get(f"https://live.kuaishou.com/u/{room_id}", timeout=5)).text
         for key in err_keys:
             if key in html:
-                logger.debug(f"{plugin_msg}: {key}")
+                logger.info(f"{plugin_msg}: {key}")
                 return False
 
         room_info = (session.get(
