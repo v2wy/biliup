@@ -45,7 +45,7 @@ class Kuaishou(DownloadBase):
         # logger.debug(f"{plugin_msg}: 暂停 {times} 秒")
         # time.sleep(times)
 
-        err_keys = ["错误代码22", "主播尚未开播"]
+        err_keys = ["错误代码22", "主播尚未开播", "请求过快，请稍后重试"]
         html = (session.get(f"https://live.kuaishou.com/u/{room_id}", timeout=5)).text
         for key in err_keys:
             if key in html:
@@ -61,6 +61,9 @@ class Kuaishou(DownloadBase):
             return False
         if room_info['result'] == 671:
             logger.debug(f"{plugin_msg}: 直播间未开播或非直播")
+            return False
+        if room_info['result'] == 2:
+            logger.debug(f"{plugin_msg}: 疑似请求过快")
             return False
         if room_info['result'] != 1:
             logger.error(f"{plugin_msg}: {room_info}")
