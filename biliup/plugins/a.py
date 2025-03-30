@@ -44,6 +44,7 @@ class Ytdlp(DownloadBase):
             return False
         self.raw_stream_url = info['url']
         self.room_title = info['title']
+        logger.debug(info)
         self.fake_headers = info['http_headers'].data
         return True
 
