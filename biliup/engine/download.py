@@ -99,10 +99,7 @@ class DownloadBase(ABC):
         if self.downloader == 'streamlink' or self.downloader == 'ffmpeg':
             if shutil.which("ffmpeg"):
                 # streamlink无法处理flv,所以回退到ffmpeg
-                if self.downloader == 'streamlink' and '.flv' not in parsed_url_path:
-                    return self.ffmpeg_segment_download(use_streamlink=True)
-                else:
-                    return self.ffmpeg_segment_download()
+                return self.ffmpeg_segment_download(self.downloader == 'streamlink')
             else:
                 logger.error("未安装 FFMpeg 或不存在于 PATH 内，本次下载使用 stream-gears")
                 logger.debug("Current user's PATH is:" + os.getenv("PATH"))
@@ -132,14 +129,14 @@ class DownloadBase(ABC):
             output_args = [
                 '-bsf:a', 'aac_adtstoasc'
             ]
-            if use_streamlink and '.flv' not in  urlparse(self.raw_stream_url).path:
+            if use_streamlink:
                 streamlink_cmd = [
                     'streamlink',
                     '--stream-segment-threads', '3',
                     '--hls-playlist-reload-attempts', '1',
                     '--http-header',
                     ';'.join([f'{key}={value}' for key, value in self.fake_headers.items()]),
-                    self.raw_stream_url,
+                    self.raw_stream_url if '.flv' not in  urlparse(self.raw_stream_url).path else "httpstream://" + self.raw_stream_url,
                     'best',
                     '-O'
                 ]
