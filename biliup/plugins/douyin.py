@@ -108,7 +108,7 @@ class Douyin(DownloadBase):
 
         try:
             pull_data = room_info['stream_url']['live_core_sdk_data']['pull_data']
-            if room_info['stream_url'].get('pull_datas') and config.get('douyin_extra_record', True):
+            if room_info['stream_url'].get('pull_datas') and config.get('douyin_extra_record', False):
                 pull_data = next(iter(room_info['stream_url']['pull_datas'].values()))
             stream_data = json.loads(pull_data['stream_data'])['data']
         except:
