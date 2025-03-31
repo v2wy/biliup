@@ -129,14 +129,14 @@ class DownloadBase(ABC):
             output_args = [
                 '-bsf:a', 'aac_adtstoasc'
             ]
-            if use_streamlink:
+            if use_streamlink and '.flv' not in urlparse(self.raw_stream_url).path:
                 streamlink_cmd = [
                     'streamlink',
                     '--stream-segment-threads', '3',
                     '--hls-playlist-reload-attempts', '1',
                     '--http-header',
                     ';'.join([f'{key}={value}' for key, value in self.fake_headers.items()]),
-                    self.raw_stream_url if '.flv' not in  urlparse(self.raw_stream_url).path else "httpstream://" + self.raw_stream_url,
+                    self.raw_stream_url,
                     'best',
                     '-O'
                 ]
