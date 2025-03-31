@@ -148,7 +148,7 @@ class Douyin(DownloadBase):
                 else:
                     quality = optional_quality_items[optional_quality_index - 1]
 
-            protocol = 'hls' if config.get('douyin_protocol') == 'hls' else 'flv'
+            protocol = 'hls' if config.get('douyin_protocol') == 'hls' and 'hls' in stream_data[quality]['main'] else 'flv'
             self.raw_stream_url = stream_data[quality]['main'][protocol]
             self.room_title = room_info['title']
         except:
