@@ -84,7 +84,7 @@ class StreamLink(DownloadBase):
 
         result = subprocess.run(
             ['streamlink', '--plugin-dir', 'streamlink_plugins', '-j', '--twitch-proxy-playlist',
-             'https://lb-eu.cdn-perfprod.com', url],
+             'https://eu.luminous.dev', url],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout
 
         info = json.loads(result)
