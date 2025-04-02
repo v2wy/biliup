@@ -160,8 +160,14 @@ class DownloadBase(ABC):
                 # 避免适配两套
                 output_args += ['-segment_time', '9999:00:00']
 
-            output_args += ['-c', 'copy']
-            output_args += self.opt_args
+            if len(self.opt_args) > 0:
+                output_args += self.opt_args
+                if '-preset' not in self.opt_args:
+                    output_args += ['-preset', 'ultrafast']
+                if '-crf' not in self.opt_args:
+                    output_args += ['-crf', '23']
+            else:
+                output_args += ['-c', 'copy']
             file_name = self.gen_download_filename(is_fmt=True)
             args = ['ffmpeg', *input_args, *output_args, f'{file_name}_%d.{self.suffix}']
             with subprocess.Popen(args, stdin=subprocess.DEVNULL if not streamlink_proc else streamlink_proc.stdout, stdout=subprocess.PIPE,
