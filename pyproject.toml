@@ -32,7 +32,7 @@ dependencies = [
     "alembic>=1.12.1",
     "requests-html>=0.10.0",
     "m3u8",
-     "lxml<6.0.0,>=5.2.2",
+    "lxml<6.0.0,>=5.2.2",
     "lxml-html-clean<1.0.0,>=0.1.1",
 ]
 dynamic = ["version"]
