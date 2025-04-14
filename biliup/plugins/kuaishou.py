@@ -35,14 +35,14 @@ class Kuaishou(DownloadBase):
         logger.info(f"代理配置：{proxy_config}")
         # 首页低风控生成did
         logger.info("请求：快手直播主页 live.kuaishou.com")
-        res = session.get("https://live.kuaishou.com", timeout=5, proxies=proxy_config)
+        res = session.get("https://live.kuaishou.com", timeout=10, proxies=proxy_config)
         time.sleep(3)
         raw_json = parse_complex_json(res.text.split('__INITIAL_STATE__=')[1])
         obj = json.loads(raw_json)
         id = obj['home']['homeLiveStream'][0]['id']
         url = f'https://live.kuaishou.com/u/{id}'
         logger.info("请求：" + url)
-        session.get(url, timeout=5, proxies=proxy_config)
+        session.get(url, timeout=10, proxies=proxy_config)
         time.sleep(2)
 
         # # 不暂停似乎容易风控
@@ -52,7 +52,7 @@ class Kuaishou(DownloadBase):
 
         err_keys = ["错误代码22", "主播尚未开播", "请求过快，请稍后重试"]
         logger.info("请求：" + f"https://live.kuaishou.com/u/{room_id}")
-        html = (session.get(f"https://live.kuaishou.com/u/{room_id}", timeout=5, proxies=proxy_config)).text
+        html = (session.get(f"https://live.kuaishou.com/u/{room_id}", timeout=10, proxies=proxy_config)).text
         for key in err_keys:
             if key in html:
                 logger.info(f"{plugin_msg}: {key}")
@@ -60,7 +60,7 @@ class Kuaishou(DownloadBase):
 
         room_info = (session.get(
             f"https://live.kuaishou.com/live_api/liveroom/livedetail?principalId={room_id}",
-            timeout=5, proxies=proxy_config)).json()['data']
+            timeout=10, proxies=proxy_config)).json()['data']
 
         if room_info['result'] == 22:
             logger.error(f"{plugin_msg}: 直播间地址错误")
