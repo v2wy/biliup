@@ -36,14 +36,14 @@ class Kuaishou(DownloadBase):
         # 首页低风控生成did
         logger.info("请求：快手直播主页 live.kuaishou.com")
         res = session.get("https://live.kuaishou.com", timeout=10, proxies=proxy_config)
-        time.sleep(3)
+        time.sleep(1)
         raw_json = parse_complex_json(res.text.split('__INITIAL_STATE__=')[1])
         obj = json.loads(raw_json)
         id = obj['home']['homeLiveStream'][0]['id']
         url = f'https://live.kuaishou.com/u/{id}'
         logger.info("请求：" + url)
         session.get(url, timeout=10, proxies=proxy_config)
-        time.sleep(2)
+        time.sleep(1)
 
         # # 不暂停似乎容易风控
         # times = 3 + random.random()
@@ -75,9 +75,10 @@ class Kuaishou(DownloadBase):
             logger.error(f"{plugin_msg}: {room_info}")
             return False
 
-        logger.info(f"直播间信息: {room_info}")
-        if is_check:
-            return True
+        logger.info(f"直播间信息: {json.dumps(room_info, ensure_ascii=False)}")
+
+        # if is_check:
+        #     return True
 
         try:
             self.room_title = room_info['liveStream']['caption']
@@ -91,6 +92,7 @@ class Kuaishou(DownloadBase):
             raw_stream_url = room_info['liveStream']['playUrls']['hevc']['adaptationSet']['representation'][-1]['url']
         else:
             raw_stream_url = room_info['liveStream']['playUrls'][0]['adaptationSet']['representation'][-1]['url']
+        logger.info(raw_stream_url)
         self.raw_stream_url = raw_stream_url
 
         return True
