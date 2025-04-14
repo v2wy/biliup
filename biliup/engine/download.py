@@ -350,7 +350,7 @@ class DownloadBase(ABC):
 
     def run(self):
         try:
-            if not asyncio.run_coroutine_threadsafe(self.acheck_stream(), loop).result() or not self.should_record():
+            if not self.should_record() or not asyncio.run_coroutine_threadsafe(self.acheck_stream(), loop).result():
                 return False
             with SessionLocal() as db:
                 update_room_title(db, self.database_row_id, self.room_title)
