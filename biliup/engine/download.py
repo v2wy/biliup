@@ -138,8 +138,8 @@ class DownloadBase(ABC):
                     return True
                 # streamlink无法处理flv,所以回退到ffmpeg
                 if self.downloader == 'streamlink' and '.flv' not in parsed_url_path:
-                    return self.ffmpeg_download(use_streamlink=True)
-                return self.ffmpeg_download()
+                    return self.ffmpeg_segment_download(use_streamlink=True)
+                return self.ffmpeg_segment_download()
 
         if '.flv' in parsed_url_path:
             # 假定flv流
@@ -153,54 +153,84 @@ class DownloadBase(ABC):
                               lambda file_name: self.__download_segment_callback(file_name))
         return True
 
-    def ffmpeg_segment_download(self):
+    def ffmpeg_segment_download(self, use_streamlink=False):
+        streamlink_proc = None
         # TODO 无日志
         # , '-report'
         # ffmpeg 输入参数
-        input_args = [
-            '-loglevel', 'quiet', '-y'
-        ]
-        # ffmpeg 输出参数
-        output_args = [
-            '-bsf:a', 'aac_adtstoasc'
-        ]
-        input_args += ['-headers', ''.join('%s: %s\r\n' % x for x in self.fake_headers.items()),
-                       '-rw_timeout', '20000000']
-        if '.m3u8' in urlparse(self.raw_stream_url).path:
-            input_args += ['-max_reload', '1000']
+        try:
+            input_args = [
+                '-loglevel', 'quiet', '-y'
+            ]
+            # ffmpeg 输出参数
+            output_args = [
+                '-bsf:a', 'aac_adtstoasc'
+            ]
+            if use_streamlink and '.flv' not in urlparse(self.raw_stream_url).path:
+                streamlink_cmd = [
+                    'streamlink',
+                    '--stream-segment-threads', '3',
+                    '--hls-playlist-reload-attempts', '1',
+                    '--http-header',
+                    ';'.join([f'{key}={value}' for key, value in self.fake_headers.items()]),
+                    self.raw_stream_url,
+                    'best',
+                    '-O'
+                ]
+                streamlink_proc = subprocess.Popen(streamlink_cmd, stdout=subprocess.PIPE)
+                input_args += ['-i', 'pipe:0']
+            else:
+                input_args += ['-headers', ''.join('%s: %s\r\n' % x for x in self.fake_headers.items()),
+                               '-rw_timeout', '20000000']
+                if '.m3u8' in urlparse(self.raw_stream_url).path:
+                    input_args += ['-max_reload', '1000']
+                input_args += ['-i', self.raw_stream_url]
+            output_args += ['-f', 'segment']
+            # output_args += ['-segment_format', self.suffix]
+            output_args += ['-segment_list', 'pipe:1']
+            output_args += ['-segment_list_type', 'flat']
+            output_args += ['-reset_timestamps', '1']
+            # output_args += ['-strftime', '1']
+            if self.segment_time:
+                output_args += ['-segment_time', self.segment_time]
+            else:
+                # 避免适配两套
+                output_args += ['-segment_time', '9999:00:00']
 
-        input_args += ['-i', self.raw_stream_url]
+            if len(self.opt_args) > 0:
+                output_args += self.opt_args
+                if '-preset' not in self.opt_args:
+                    output_args += ['-preset', 'ultrafast']
+                if '-crf' not in self.opt_args:
+                    output_args += ['-crf', '23']
+            else:
+                output_args += ['-c', 'copy']
+            file_name = self.gen_download_filename(is_fmt=True)
+            args = ['ffmpeg', *input_args, *output_args, f'{file_name}_%d.{self.suffix}']
+            with subprocess.Popen(args, stdin=subprocess.DEVNULL if not streamlink_proc else streamlink_proc.stdout,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.DEVNULL) as proc:
+                for line in iter(proc.stdout.readline, b''):  # b'\n'-separated lines
+                    try:
+                        ffmpeg_file_name = line.rstrip().decode(errors='ignore')
+                        time.sleep(1)
+                        # 文件重命名
+                        self.download_file_rename(ffmpeg_file_name, f'{file_name}.{self.suffix}')
+                        self.__download_segment_callback(f'{file_name}.{self.suffix}')
+                        file_name = self.gen_download_filename(is_fmt=True)
+                    except:
+                        logger.error(f'分段事件失败：{self.__class__.__name__} - {self.fname}', exc_info=True)
 
-        output_args += ['-f', 'segment']
-        # output_args += ['-segment_format', self.suffix]
-        output_args += ['-segment_list', 'pipe:1']
-        output_args += ['-segment_list_type', 'flat']
-        output_args += ['-reset_timestamps', '1']
-        # output_args += ['-strftime', '1']
-        if self.segment_time:
-            output_args += ['-segment_time', self.segment_time]
-        else:
-            # 避免适配两套
-            output_args += ['-segment_time', '9999:00:00']
-
-        output_args += ['-c', 'copy']
-        output_args += self.opt_args
-        file_name = self.gen_download_filename(is_fmt=True)
-        args = ['ffmpeg', *input_args, *output_args, f'{file_name}_%d.{self.suffix}']
-        with subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                              stderr=subprocess.DEVNULL) as proc:
-            for line in iter(proc.stdout.readline, b''):  # b'\n'-separated lines
-                try:
-                    ffmpeg_file_name = line.rstrip().decode(errors='ignore')
-                    time.sleep(1)
-                    # 文件重命名
-                    self.download_file_rename(ffmpeg_file_name, f'{file_name}.{self.suffix}')
-                    self.__download_segment_callback(f'{file_name}.{self.suffix}')
-                    file_name = self.gen_download_filename(is_fmt=True)
-                except:
-                    logger.error(f'分段事件失败：{self.__class__.__name__} - {self.fname}', exc_info=True)
-
-        return proc.returncode == 0
+            return proc.returncode == 0
+        finally:
+            try:
+                if streamlink_proc:
+                    streamlink_proc.terminate()
+                    streamlink_proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                streamlink_proc.kill()
+            except:
+                logger.exception(f'terminate {self.fname} failed')
 
     def ffmpeg_download(self, use_streamlink=False):
         # streamlink进程

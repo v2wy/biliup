@@ -1,9 +1,11 @@
-import time
+import json
+import os
 import random
+import time
 
-import biliup.common.util
+import requests_html
+
 from biliup.config import config
-from ..common import tools
 from ..engine.decorators import Plugin
 from ..engine.download import DownloadBase
 from ..plugins import logger
@@ -28,26 +30,37 @@ class Kuaishou(DownloadBase):
 
         plugin_msg = f"Kuaishou - {room_id}"
 
-        # with requests.Session() as s:
-        biliup.common.util.client.headers = self.fake_headers.copy()
+        session = requests_html.HTMLSession()
+        proxy_config = get_random_proxy()
+        logger.info(f"代理配置：{proxy_config}")
         # 首页低风控生成did
-        await biliup.common.util.client.get("https://live.kuaishou.com", timeout=5)
+        logger.info("请求：快手直播主页 live.kuaishou.com")
+        res = session.get("https://live.kuaishou.com", timeout=5, proxies=proxy_config)
+        time.sleep(3)
+        raw_json = parse_complex_json(res.text.split('__INITIAL_STATE__=')[1])
+        obj = json.loads(raw_json)
+        id = obj['home']['homeLiveStream'][0]['id']
+        url = f'https://live.kuaishou.com/u/{id}'
+        logger.info("请求：" + url)
+        session.get(url, timeout=5, proxies=proxy_config)
+        time.sleep(2)
 
-        # 不暂停似乎容易风控
-        times = 3 + random.random()
-        logger.debug(f"{plugin_msg}: 暂停 {times} 秒")
-        time.sleep(times)
+        # # 不暂停似乎容易风控
+        # times = 3 + random.random()
+        # logger.debug(f"{plugin_msg}: 暂停 {times} 秒")
+        # time.sleep(times)
 
-        err_keys = ["错误代码22", "主播尚未开播"]
-        html = (await biliup.common.util.client.get(f"https://live.kuaishou.com/u/{room_id}", timeout=5)).text
+        err_keys = ["错误代码22", "主播尚未开播", "请求过快，请稍后重试"]
+        logger.info("请求：" + f"https://live.kuaishou.com/u/{room_id}")
+        html = (session.get(f"https://live.kuaishou.com/u/{room_id}", timeout=5, proxies=proxy_config)).text
         for key in err_keys:
             if key in html:
-                logger.debug(f"{plugin_msg}: {key}")
+                logger.info(f"{plugin_msg}: {key}")
                 return False
 
-        room_info = (await biliup.common.util.client.get(
+        room_info = (session.get(
             f"https://live.kuaishou.com/live_api/liveroom/livedetail?principalId={room_id}",
-            timeout=5)).json()['data']
+            timeout=5, proxies=proxy_config)).json()['data']
 
         if room_info['result'] == 22:
             logger.error(f"{plugin_msg}: 直播间地址错误")
@@ -55,19 +68,30 @@ class Kuaishou(DownloadBase):
         if room_info['result'] == 671:
             logger.debug(f"{plugin_msg}: 直播间未开播或非直播")
             return False
+        if room_info['result'] == 2:
+            logger.debug(f"{plugin_msg}: 疑似请求过快")
+            return False
         if room_info['result'] != 1:
             logger.error(f"{plugin_msg}: {room_info}")
             return False
 
-        self.room_title = room_info.get('liveStream', {}).get('caption', {})
-            
+        logger.info(f"直播间信息: {room_info}")
         if is_check:
             return True
 
-        if not self.room_title:
+        try:
+            self.room_title = room_info['liveStream']['caption']
+        except KeyError:
             logger.warning(f"{plugin_msg}: 直播间标题获取失败，使用快手ID代替")
-            self.room_title = room_id
-        self.raw_stream_url = room_info['liveStream']['playUrls'][0]['adaptationSet']['representation'][-1]['url']
+            self.room_title = room_info['author']['name']
+
+        if 'h264' in room_info['liveStream']['playUrls']:
+            raw_stream_url = room_info['liveStream']['playUrls']['h264']['adaptationSet']['representation'][-1]['url']
+        elif 'hevc' in room_info['liveStream']['playUrls']:
+            raw_stream_url = room_info['liveStream']['playUrls']['hevc']['adaptationSet']['representation'][-1]['url']
+        else:
+            raw_stream_url = room_info['liveStream']['playUrls'][0]['adaptationSet']['representation'][-1]['url']
+        self.raw_stream_url = raw_stream_url
 
         return True
 
@@ -78,3 +102,54 @@ def get_kwaiId(url):
         if key in url:
             kwaiId = url.split(key)[1]
             return kwaiId
+
+
+def parse_complex_json(script):
+    stack = []
+    start_index = script.find('{')
+    if start_index == -1:
+        return None
+
+    stack.append('{')
+    end_index = start_index + 1
+
+    while end_index < len(script) and stack:
+        char = script[end_index]
+        if char == '{':
+            stack.append('{')
+        elif char == '}':
+            stack.pop()
+        end_index += 1
+
+    return script[start_index:end_index]
+
+
+def get_random_proxy():
+    """
+    从 proxies.txt 中随机读取一个代理配置，返回格式为字典：
+    {
+        "http": "socks5://user:pass@ip:port",
+        "https": "socks5://user:pass@ip:port"
+    }
+    如果文件不存在或内容无效，返回 None。
+    """
+    # 检查文件是否存在
+    if not os.path.exists("proxies.txt"):
+        return None
+
+    # 读取文件内容并过滤空行
+    with open("proxies.txt", "r") as f:
+        lines = [line.strip() for line in f.readlines() if line.strip()]
+
+    # 无有效代理时返回 None
+    if not lines:
+        return None
+
+    # 随机选择一个代理
+    proxy = random.choice(lines)
+
+    # 构造代理字典（同时支持 HTTP/HTTPS）
+    return {
+        "http": proxy,
+        "https": proxy
+    }

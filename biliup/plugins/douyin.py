@@ -157,7 +157,7 @@ class Douyin(DownloadBase):
                 else:
                     quality = optional_quality_items[optional_quality_index - 1]
 
-            protocol = 'hls' if self.douyin_protocol == 'hls' else 'flv'
+            protocol = 'hls' if self.douyin_protocol == 'hls' and 'hls' in stream_data[quality]['main'] else 'flv'
             self.raw_stream_url = stream_data[quality]['main'][protocol].replace('http://', 'https://')
         except:
             logger.exception(f"{self.plugin_msg}: 寻找清晰度失败")
