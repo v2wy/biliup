@@ -123,6 +123,7 @@ class UploadBase:
         raise NotImplementedError()
 
     def start(self):
+        return []
         from biliup.handler import event_manager
         # 保证一个name同时只有一个上传线程扫描文件列表
         lock = NamedLock(f'upload_file_list_{self.principal}')
