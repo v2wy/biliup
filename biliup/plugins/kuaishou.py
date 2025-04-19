@@ -1,6 +1,7 @@
 import json
 import os
 import random
+import time
 
 import requests_html
 
@@ -29,21 +30,30 @@ class Kuaishou(DownloadBase):
 
         plugin_msg = f"Kuaishou - {room_id}"
 
-        session = requests_html.HTMLSession()
-        proxy_config = get_random_proxy()
-        logger.info(f"代理配置：{proxy_config}")
+        room_info = {}
+        try_time = 3
+        while try_time > 0:
+            try:
+                session = requests_html.HTMLSession()
+                proxy_config = get_random_proxy()
+                logger.info(f"代理配置：{proxy_config}")
 
-        err_keys = ["错误代码22", "主播尚未开播", "请求过快，请稍后重试"]
-        logger.info("请求：" + f"https://live.kuaishou.com/u/{room_id}")
-        html = (session.get(f"https://live.kuaishou.com/u/{room_id}", timeout=10, proxies=proxy_config)).text
-        for key in err_keys:
-            if key in html:
-                logger.info(f"{plugin_msg}: {key}")
-                return False
+                err_keys = ["错误代码22", "主播尚未开播", "请求过快，请稍后重试"]
+                logger.info("请求：" + f"https://live.kuaishou.com/u/{room_id}")
+                html = (session.get(f"https://live.kuaishou.com/u/{room_id}", timeout=10, proxies=proxy_config)).text
+                for key in err_keys:
+                    if key in html:
+                        logger.info(f"{plugin_msg}: {key}")
+                        return False
 
-        room_info = (session.get(
-            f"https://live.kuaishou.com/live_api/liveroom/livedetail?principalId={room_id}",
-            timeout=10, proxies=proxy_config)).json()['data']
+                room_info = (session.get(
+                    f"https://live.kuaishou.com/live_api/liveroom/livedetail?principalId={room_id}",
+                    timeout=10, proxies=proxy_config)).json()['data']
+                break
+            except Exception as e:
+                logger.error(f"Kuaishou - {self.url}: {e}")
+                try_time -= 1
+                time.sleep(5)
 
         if room_info['result'] == 22:
             logger.error(f"{plugin_msg}: 直播间地址错误")
