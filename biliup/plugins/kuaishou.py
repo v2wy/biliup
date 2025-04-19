@@ -1,7 +1,6 @@
 import json
 import os
 import random
-import time
 
 import requests_html
 
@@ -33,22 +32,6 @@ class Kuaishou(DownloadBase):
         session = requests_html.HTMLSession()
         proxy_config = get_random_proxy()
         logger.info(f"代理配置：{proxy_config}")
-        # 首页低风控生成did
-        logger.info("请求：快手直播主页 live.kuaishou.com")
-        res = session.get("https://live.kuaishou.com", timeout=10, proxies=proxy_config)
-        time.sleep(1)
-        raw_json = parse_complex_json(res.text.split('__INITIAL_STATE__=')[1])
-        obj = json.loads(raw_json)
-        id = obj['home']['homeLiveStream'][0]['id']
-        url = f'https://live.kuaishou.com/u/{id}'
-        logger.info("请求：" + url)
-        session.get(url, timeout=10, proxies=proxy_config)
-        time.sleep(1)
-
-        # # 不暂停似乎容易风控
-        # times = 3 + random.random()
-        # logger.debug(f"{plugin_msg}: 暂停 {times} 秒")
-        # time.sleep(times)
 
         err_keys = ["错误代码22", "主播尚未开播", "请求过快，请稍后重试"]
         logger.info("请求：" + f"https://live.kuaishou.com/u/{room_id}")
@@ -79,17 +62,16 @@ class Kuaishou(DownloadBase):
 
         # if is_check:
         #     return True
-
-        try:
+        self.room_title = room_info['author']['name']
+        if 'caption' in room_info['liveStream']:
             self.room_title = room_info['liveStream']['caption']
-        except KeyError:
-            logger.warning(f"{plugin_msg}: 直播间标题获取失败，使用快手ID代替")
-            self.room_title = room_info['author']['name']
 
-        if 'h264' in room_info['liveStream']['playUrls']:
-            raw_stream_url = room_info['liveStream']['playUrls']['h264']['adaptationSet']['representation'][-1]['url']
+        if 'hlsPlayUrl' in room_info['liveStream'] and room_info['liveStream']['hlsPlayUrl'] != '':
+            raw_stream_url = room_info['liveStream']['hlsPlayUrl']
         elif 'hevc' in room_info['liveStream']['playUrls']:
             raw_stream_url = room_info['liveStream']['playUrls']['hevc']['adaptationSet']['representation'][-1]['url']
+        elif 'h264' in room_info['liveStream']['playUrls']:
+            raw_stream_url = room_info['liveStream']['playUrls']['h264']['adaptationSet']['representation'][-1]['url']
         else:
             raw_stream_url = room_info['liveStream']['playUrls'][0]['adaptationSet']['representation'][-1]['url']
         logger.info(raw_stream_url)
