@@ -251,7 +251,8 @@ class DownloadBase(ABC):
                 streamlink_cmd = [
                     'streamlink',
                     '--stream-segment-threads', '3',
-                    '--hls-playlist-reload-attempts', '1'
+                    # '--hls-playlist-reload-attempts', '1' # 重新加载 HLS 播放列表之前放弃的最大尝试次数。
+                    '--stream-timeout', '20',
                 ]
                 for key, value in self.fake_headers.items():
                     streamlink_cmd.extend(['--http-header', f'{key}={value}'])
