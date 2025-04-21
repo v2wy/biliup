@@ -1,6 +1,4 @@
 import json
-import os
-import random
 import time
 
 import requests_html
@@ -35,7 +33,7 @@ class Kuaishou(DownloadBase):
         while try_time > 0:
             try:
                 session = requests_html.HTMLSession()
-                proxy_config = get_random_proxy()
+                proxy_config = self.get_random_proxy()
                 logger.info(f"代理配置：{proxy_config}")
 
                 err_keys = ["错误代码22", "主播尚未开播", "请求过快，请稍后重试"]
@@ -84,6 +82,24 @@ class Kuaishou(DownloadBase):
             raw_stream_url = room_info['liveStream']['playUrls']['h264']['adaptationSet']['representation'][-1]['url']
         else:
             raw_stream_url = room_info['liveStream']['playUrls'][0]['adaptationSet']['representation'][-1]['url']
+
+        kuaishou_prefer = self.conf('kuaishou_prefer')
+        if kuaishou_prefer:
+            if kuaishou_prefer == 'hls' and 'hlsPlayUrl' in room_info['liveStream'] and room_info['liveStream'][
+                'hlsPlayUrl'] != '':
+                raw_stream_url = room_info['liveStream']['hlsPlayUrl']
+                logger.info(f"根据kuaishou_prefer配置{kuaishou_prefer}修改为新的raw_stream_url")
+            elif kuaishou_prefer == 'hevc' and 'hevc' in room_info['liveStream']['playUrls']:
+                raw_stream_url = room_info['liveStream']['playUrls']['hevc']['adaptationSet']['representation'][-1][
+                    'url']
+                # 其他下载器可能不支持hevc
+                self.downloader = 'ffmpeg'
+                logger.info(f"根据kuaishou_prefer配置{kuaishou_prefer}修改为新的raw_stream_url")
+            elif kuaishou_prefer == 'h264' and 'h264' in room_info['liveStream']['playUrls']:
+                raw_stream_url = room_info['liveStream']['playUrls']['h264']['adaptationSet']['representation'][-1][
+                    'url']
+                logger.info(f"根据kuaishou_prefer配置{kuaishou_prefer}修改为新的raw_stream_url")
+
         logger.info(raw_stream_url)
         self.raw_stream_url = raw_stream_url
 
@@ -116,34 +132,3 @@ def parse_complex_json(script):
         end_index += 1
 
     return script[start_index:end_index]
-
-
-def get_random_proxy():
-    """
-    从 proxies.txt 中随机读取一个代理配置，返回格式为字典：
-    {
-        "http": "socks5://user:pass@ip:port",
-        "https": "socks5://user:pass@ip:port"
-    }
-    如果文件不存在或内容无效，返回 None。
-    """
-    # 检查文件是否存在
-    if not os.path.exists("proxies.txt"):
-        return None
-
-    # 读取文件内容并过滤空行
-    with open("proxies.txt", "r") as f:
-        lines = [line.strip() for line in f.readlines() if line.strip()]
-
-    # 无有效代理时返回 None
-    if not lines:
-        return None
-
-    # 随机选择一个代理
-    proxy = random.choice(lines)
-
-    # 构造代理字典（同时支持 HTTP/HTTPS）
-    return {
-        "http": proxy,
-        "https": proxy
-    }

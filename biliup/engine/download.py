@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import queue
+import random
 import re
 import subprocess
 import threading
@@ -535,6 +536,61 @@ class DownloadBase(ABC):
 
     def close(self):
         pass
+
+    def conf(self, k: str, file_path='conf.json'):
+        """
+            读取并解析 JSON 格式的配置文件。
+
+            Args:
+                file_path (str): 配置文件的路径，默认为 'config.json'。
+
+            Returns:
+                dict: 解析后的配置字典。如果出错，返回 None。
+
+            异常处理:
+                - 文件不存在时打印错误信息。
+                - JSON 格式错误时打印错误信息。
+                - 其他错误（如权限问题）捕获并提示。
+            """
+        if not os.path.exists(file_path):
+            return None
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                conf = json.load(f)
+                if k not in conf:
+                    return None
+                return conf[k]
+        except FileNotFoundError:
+            logger.error(f"错误：配置文件 '{file_path}' 不存在，请检查路径。")
+        except json.JSONDecodeError:
+            logger.error(f"错误：配置文件 '{file_path}' 格式不正确，请验证 JSON 语法。")
+        except Exception as e:
+            logger.error(f"未知错误：读取配置文件时发生意外错误 - {str(e)}")
+
+        return None
+
+    def get_random_proxy(self):
+        """
+        从 proxies.txt 中随机读取一个代理配置，返回格式为字典：
+        {
+            "http": "socks5://user:pass@ip:port",
+            "https": "socks5://user:pass@ip:port"
+        }
+        如果文件不存在或内容无效，返回 None。
+        """
+        # 检查文件是否存在
+        proxies = self.conf('proxies')
+        if not proxies:
+            return None
+
+        # 随机选择一个代理
+        proxy = random.choice(proxies)
+
+        # 构造代理字典（同时支持 HTTP/HTTPS）
+        return {
+            "http": proxy,
+            "https": proxy
+        }
 
 
 def stream_gears_download(url, headers, file_name, segment_time=None, file_size=None,
