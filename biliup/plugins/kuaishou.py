@@ -89,7 +89,8 @@ class Kuaishou(DownloadBase):
                 'hlsPlayUrl'] != '':
                 raw_stream_url = room_info['liveStream']['hlsPlayUrl']
                 logger.info(f"根据kuaishou_prefer配置{kuaishou_prefer}修改为新的raw_stream_url")
-            elif kuaishou_prefer == 'hevc' and 'hevc' in room_info['liveStream']['playUrls']:
+            elif kuaishou_prefer == 'hevc' and 'hevc' in room_info['liveStream']['playUrls'] and 'adaptationSet' in \
+                    room_info['liveStream']['playUrls']['hevc']:
                 kuaishou_quality_type = self.conf('kuaishou_quality_type')
                 for representation in room_info['liveStream']['playUrls']['hevc']['adaptationSet']['representation']:
                     if representation['qualityType'] == kuaishou_quality_type:
@@ -97,7 +98,8 @@ class Kuaishou(DownloadBase):
                         # 其他下载器可能不支持hevc
                         self.downloader = 'ffmpeg'
                         logger.info(f"根据kuaishou_prefer配置{kuaishou_prefer}修改为新的raw_stream_url")
-            elif kuaishou_prefer == 'h264' and 'h264' in room_info['liveStream']['playUrls']:
+            elif kuaishou_prefer == 'h264' and 'h264' in room_info['liveStream']['playUrls'] and 'adaptationSet' in \
+                    room_info['liveStream']['playUrls']['h264']:
                 raw_stream_url = room_info['liveStream']['playUrls']['h264']['adaptationSet']['representation'][-1][
                     'url']
                 logger.info(f"根据kuaishou_prefer配置{kuaishou_prefer}修改为新的raw_stream_url")
