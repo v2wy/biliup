@@ -74,12 +74,12 @@ class Kuaishou(DownloadBase):
         if 'caption' in room_info['liveStream']:
             self.room_title = room_info['liveStream']['caption']
 
-        if 'hlsPlayUrl' in room_info['liveStream'] and room_info['liveStream']['hlsPlayUrl'] != '':
-            raw_stream_url = room_info['liveStream']['hlsPlayUrl']
+        if 'h264' in room_info['liveStream']['playUrls']:
+            raw_stream_url = room_info['liveStream']['playUrls']['h264']['adaptationSet']['representation'][-1]['url']
         elif 'hevc' in room_info['liveStream']['playUrls']:
             raw_stream_url = room_info['liveStream']['playUrls']['hevc']['adaptationSet']['representation'][-1]['url']
-        elif 'h264' in room_info['liveStream']['playUrls']:
-            raw_stream_url = room_info['liveStream']['playUrls']['h264']['adaptationSet']['representation'][-1]['url']
+        elif 'hlsPlayUrl' in room_info['liveStream'] and room_info['liveStream']['hlsPlayUrl'] != '':
+            raw_stream_url = room_info['liveStream']['hlsPlayUrl']
         else:
             raw_stream_url = room_info['liveStream']['playUrls'][0]['adaptationSet']['representation'][-1]['url']
 
