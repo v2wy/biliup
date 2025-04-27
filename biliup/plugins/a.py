@@ -138,6 +138,10 @@ class Stripchat(StreamLink):
 class Twitch(StreamLink):
     pass
 
+@Plugin.download(regexp=r'(?:https?://)?kick\.com/(?P<id>[0-9_a-zA-Z]+)')
+class Kick(StreamLink):
+    pass
+
 
 # https://www.tiktok.com/@ignobitaofficial/live
 @Plugin.download(regexp=r'(?:https?://)?(?:(?:www|go|m)\.)?tiktok\.com/@(?P<id>[0-9_a-zA-Z]+)/live')
