@@ -21,12 +21,18 @@ class Ytdlp(DownloadBase):
         self.downloader = 'ffmpeg'
 
     async def acheck_stream(self, is_check=False):
-        with yt_dlp.YoutubeDL({
-            'download_archive': 'archive.txt',
+        options = {
             'cookiefile': self.youtube_cookie,
             'ignoreerrors': True,
             'extractor_retries': 0,
-        }) as ydl:
+        }
+        proxies_map = self.conf('proxies_map')
+        if proxies_map and proxies_map.get(self.fname):
+            logger.info(f"{self.fname} 使用代理 {proxies_map[self.fname]}")
+            options.update({
+                'proxy': proxies_map[self.fname],
+            })
+        with yt_dlp.YoutubeDL(options) as ydl:
             info = ydl.extract_info(self.url, download=False)
         if info is None:
             return False
@@ -137,6 +143,7 @@ class Stripchat(StreamLink):
 @Plugin.download(regexp=r'(?:https?://)?(?:(?:www|go|m)\.)?twitch\.tv/(?P<id>[0-9_a-zA-Z]+)')
 class Twitch(StreamLink):
     pass
+
 
 @Plugin.download(regexp=r'(?:https?://)?kick\.com/(?P<id>[0-9_a-zA-Z]+)')
 class Kick(StreamLink):
