@@ -585,6 +585,7 @@ class DownloadBase(ABC):
 
         # 随机选择一个代理
         proxy = random.choice(proxies)
+        logger.info(f"选择了代理：{proxy}")
 
         # 构造代理字典（同时支持 HTTP/HTTPS）
         return {
