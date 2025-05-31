@@ -32,19 +32,19 @@ class Kuaishou(DownloadBase):
         try_time = 3
         while try_time > 0:
             try:
-                session = requests_html.HTMLSession()
+                async_session = requests_html.AsyncHTMLSession()
                 proxy_config = self.get_random_proxy()
                 logger.info(f"代理配置：{proxy_config}")
 
                 err_keys = ["错误代码22", "主播尚未开播", "请求过快，请稍后重试"]
                 logger.info("请求：" + f"https://live.kuaishou.com/u/{room_id}")
-                html = (session.get(f"https://live.kuaishou.com/u/{room_id}", timeout=10, proxies=proxy_config)).text
+                html = (await async_session.get(f"https://live.kuaishou.com/u/{room_id}", timeout=10, proxies=proxy_config)).text
                 for key in err_keys:
                     if key in html:
                         logger.info(f"{plugin_msg}: {key}")
                         return False
 
-                room_info = (session.get(
+                room_info = (await async_session.get(
                     f"https://live.kuaishou.com/live_api/liveroom/livedetail?principalId={room_id}",
                     timeout=10, proxies=proxy_config)).json()['data']
                 break
