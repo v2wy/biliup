@@ -35,6 +35,7 @@ dependencies = [
     "requests-html>=0.10.0",
     "lxml<6.0.0,>=5.2.2",
     "lxml-html-clean<1.0.0,>=0.1.1",
+    "streamget",
 ]
 dynamic = ["version"]
 

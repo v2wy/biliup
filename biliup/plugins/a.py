@@ -2,6 +2,7 @@ import json
 import os.path
 import subprocess
 
+import streamget
 import streamlink
 import yt_dlp
 from streamlink import NoPluginError
@@ -106,6 +107,17 @@ class StreamLink(DownloadBase):
         return True
 
 
+class StreamGet(DownloadBase):
+    def __init__(self, fname, url, suffix='mkv'):
+        DownloadBase.__init__(self, fname, url, suffix=suffix)
+
+        self.is_download = True
+        self.downloader = 'ffmpeg'
+
+    async def acheck_stream(self, is_check=False):
+        pass
+
+
 @Plugin.download(regexp=r'(?:https?://)?(chaturbate\.com)/(?P<id>.*?)/')
 class Chaturbate(Ytdlp):
     pass
@@ -163,3 +175,65 @@ class Tiktok(StreamLink):
 @Plugin.download(regexp=r'(?:https?://)?(?:(?:www)\.)?pandalive\.co\.kr/live/play/(?P<id>[0-9_a-zA-Z]+)')
 class Pandalive(StreamLink):
     pass
+
+
+# https://weibo.com/l/wblive/p/show/1022:2321325160014053769290
+@Plugin.download(regexp=r'(?:https?://)?(?:(?:www)\.)?weibo\.com/l/wblive/p/show/(?P<id>[0-9_a-zA-Z]+)')
+class Weibo(StreamGet):
+    async def acheck_stream(self, is_check=False):
+        live = streamget.WeiboLiveStream()
+        data = await live.fetch_web_stream_data(self.url)
+        is_live = data.get('is_live')
+        if not is_live:
+            return False
+        if 'play_url_list' not in data:
+            return False
+        if len(data['play_url_list']) == 0:
+            return False
+        streaminfo = data['play_url_list'][-1]
+        if streaminfo.get("m3u8_url"):
+            self.raw_stream_url = streaminfo.get("m3u8_url")
+        elif streaminfo.get("flv_url"):
+            self.raw_stream_url = streaminfo.get("flv_url")
+        self.room_title = data['title'] if 'title' in data else ''
+        return True
+
+
+# https://3.cn/-2hJT570
+@Plugin.download(regexp=r'(?:https?://)?3\.cn/(?P<id>[0-9_a-zA-Z-]+)')
+class JDLive(StreamGet):
+    async def acheck_stream(self, is_check=False):
+        live = streamget.JDLiveStream()
+        data = await live.fetch_web_stream_data(self.url)
+        print(json.dumps(data, ensure_ascii=False))
+        is_live = data.get('is_live')
+        if not is_live:
+            return False
+        if 'flv_url' in data:
+            self.raw_stream_url = data['flv_url']
+        elif 'm3u8_url' in data:
+            self.raw_stream_url = data['m3u8_url']
+        else:
+            self.raw_stream_url = data['record_url']
+        self.room_title = ''
+        return True
+
+
+# http://xhslink.com/8MvrQdb
+@Plugin.download(regexp=r'(?:https?://)?xhslink\.com/(?P<id>[0-9_a-zA-Z-]+)')
+class XHSLive(StreamGet):
+    async def acheck_stream(self, is_check=False):
+        live = streamget.RedNoteLiveStream()
+        data = await live.fetch_app_stream_data(self.url)
+        print(json.dumps(data, ensure_ascii=False))
+        is_live = data.get('is_live')
+        if not is_live:
+            return False
+        if 'flv_url' in data:
+            self.raw_stream_url = data['flv_url']
+        elif 'm3u8_url' in data:
+            self.raw_stream_url = data['m3u8_url']
+        else:
+            self.raw_stream_url = data['record_url']
+        self.room_title = ''
+        return True
