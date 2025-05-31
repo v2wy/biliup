@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os.path
 import subprocess
@@ -34,7 +35,12 @@ class Ytdlp(DownloadBase):
                 'proxy': proxies_map[self.fname],
             })
         with yt_dlp.YoutubeDL(options) as ydl:
-            info = ydl.extract_info(self.url, download=False)
+            loop = asyncio.get_running_loop()
+            # 在后台线程中运行 ydl.extract_info
+            info = await loop.run_in_executor(
+                None,  # 使用默认线程池
+                lambda: ydl.extract_info(self.url, download=False)
+            )
         if info is None:
             return False
         if type(info) is not dict:
@@ -74,13 +80,21 @@ class StreamLink(DownloadBase):
         self.downloader = 'ffmpeg'
 
     async def acheck_stream(self, is_check=False):
+        loop = asyncio.get_running_loop()
         try:
-            plugin_name, plugin_type, url = self.session.resolve_url(self.url)
+            plugin_name, plugin_type, url = await loop.run_in_executor(
+                None,  # 使用默认线程池
+                lambda: self.session.resolve_url(self.url)
+            )
             logger.debug(f'{url}匹配到插件 ' + plugin_name)
         except NoPluginError:
             logger.error('url没有匹配到插件 ' + self.url)
             return False
-        streams = self.session.streams(self.url)
+
+        streams = await loop.run_in_executor(
+            None,  # 使用默认线程池
+            lambda: self.session.streams(self.url)
+        )
         if streams is None:
             return False
 
@@ -89,10 +103,13 @@ class StreamLink(DownloadBase):
         if res is None:
             return False
 
-        result = subprocess.run(
-            ['streamlink', '--plugin-dir', 'streamlink_plugins', '-j', '--twitch-proxy-playlist',
-             'https://eu.luminous.dev', url],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout
+        result = await loop.run_in_executor(
+            None,  # 使用默认线程池
+            lambda: subprocess.run(
+                ['streamlink', '--plugin-dir', 'streamlink_plugins', '-j', '--twitch-proxy-playlist',
+                 'https://eu.luminous.dev', url],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout
+        )
 
         info = json.loads(result)
 
