@@ -42,7 +42,11 @@ class Youtube(DownloadBase):
 
     async def acheck_stream(self, is_check=False):
         channel = re.match(VALID_URL_BASE, self.url).group('id')
-        isLive, streamings = self.get_channel_live_info(channel)
+        loop = asyncio.get_running_loop()
+        isLive, streamings  = await loop.run_in_executor(
+            None,  # 使用默认线程池
+            lambda: self.get_channel_live_info(channel)
+        )
         if not isLive:
             return False
         vod_id = streamings[0]['video_id']
@@ -53,7 +57,10 @@ class Youtube(DownloadBase):
             'extractor_retries': 0,
         }) as ydl:
             video_url = f"https://www.youtube.com/watch?v={vod_id}"
-            info = ydl.extract_info(video_url, download=False)
+            info = await loop.run_in_executor(
+                None,  # 使用默认线程池
+                lambda: ydl.extract_info(video_url, download=False)
+            )
             # print(info)
         self.raw_stream_url = info['url']
         self.room_title = streamings[0]['title1']
