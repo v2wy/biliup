@@ -119,7 +119,11 @@ class StreamLink(DownloadBase):
         self.raw_stream_url = res.url
         if type(info) is dict and info and 'streams' in info and 'best' in info['streams']:
             self.raw_stream_url = info['streams']['best']['url']
+            if '1080p60' in info['streams']:
+                self.raw_stream_url = info['streams']['1080p60']['url']
             self.fake_headers = info['streams']['best']['headers']
+            if '1080p60' in info['streams']:
+                self.fake_headers = info['streams']['1080p60']['headers']
         self.room_title = ''
         if type(info) is dict and info and 'metadata' in info and 'title' in info['metadata']:
             self.room_title = info['metadata']['title']
