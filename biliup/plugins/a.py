@@ -10,6 +10,7 @@ from streamlink import NoPluginError
 
 from biliup.config import config
 from . import logger
+from ..Danmaku import DanmakuClient
 from ..engine.decorators import Plugin
 from ..engine.download import DownloadBase
 
@@ -171,7 +172,27 @@ class Stripchat(StreamLink):
 
 @Plugin.download(regexp=r'(?:https?://)?(?:(?:www|go|m)\.)?twitch\.tv/(?P<id>[0-9_a-zA-Z]+)')
 class Twitch(StreamLink):
-    pass
+    def __init__(self, fname, url, suffix='mkv'):
+        StreamLink.__init__(self, fname, url, suffix=suffix)
+        self.twitch_danmaku = config.get('twitch_danmaku', False)
+        self.twitch_disable_ads = config.get('twitch_disable_ads', True)
+        self.__proc = None
+
+    def danmaku_init(self):
+        if self.twitch_danmaku:
+            self.danmaku = DanmakuClient(self.url, self.gen_download_filename())
+
+    def close(self):
+        try:
+            if self.__proc is not None:
+                self.__proc.terminate()
+                self.__proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            self.__proc.kill()
+        except:
+            logger.exception(f'terminate {self.fname} failed')
+        finally:
+            self.__proc = None
 
 
 @Plugin.download(regexp=r'(?:https?://)?kick\.com/(?P<id>[0-9_a-zA-Z]+)')
