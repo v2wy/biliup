@@ -3,6 +3,8 @@ import asyncio
 import yt_dlp
 
 from biliup.config import config
+from ..database.db import SessionLocal
+from ..database.models import LiveStreamers
 from ..engine.decorators import Plugin
 from . import logger
 from ..engine.download import DownloadBase
@@ -10,6 +12,7 @@ import requests
 from urllib.parse import urlparse
 from streamlink.plugin.api import validate
 import re
+from biliup.app import context
 
 VALID_URL_BASE = r'(?:https?://)?(?:(?:www|m)\.)?youtube\.com/@(?P<id>.+)(\/.*)?'
 session = requests.session()
@@ -43,28 +46,39 @@ class Youtube(DownloadBase):
     async def acheck_stream(self, is_check=False):
         channel = re.match(VALID_URL_BASE, self.url).group('id')
         loop = asyncio.get_running_loop()
-        isLive, streamings  = await loop.run_in_executor(
+        isLive, streamings = await loop.run_in_executor(
             None,  # 使用默认线程池
             lambda: self.get_channel_live_info(channel)
         )
         if not isLive:
             return False
-        vod_id = streamings[0]['video_id']
-        with yt_dlp.YoutubeDL({
-            'download_archive': 'archive.txt',
-            'cookiefile': self.youtube_cookie,
-            'ignoreerrors': True,
-            'extractor_retries': 0,
-        }) as ydl:
-            video_url = f"https://www.youtube.com/watch?v={vod_id}"
-            info = await loop.run_in_executor(
-                None,  # 使用默认线程池
-                lambda: ydl.extract_info(video_url, download=False)
-            )
-            # print(info)
-        self.raw_stream_url = info['url']
-        self.room_title = streamings[0]['title1']
-        return True
+        with SessionLocal() as db:
+            for streaming in streamings:
+                vod_id = streaming['video_id']
+                video_url = f"https://www.youtube.com/watch?v={vod_id}"
+                post_processor = config['streamers'].get(self.fname, {}).get("postprocessor", None)
+                mv = 'baidu'
+                if post_processor:
+                    mv = post_processor[0]['mv']
+                json_data = {
+                    "postprocessor": [
+                        {"mv": mv}
+                    ],
+                    "remark": f"{self.fname}[{vod_id}]",
+                    "url": video_url
+                }
+
+                to_save = LiveStreamers(**LiveStreamers.filter_parameters(json_data))
+                db.add(to_save)
+            try:
+                db.commit()
+            except Exception as e:
+                logger.exception("Error handling request")
+            config.load_from_db(db)
+            for _ in streamings:
+                context['PluginInfo'].add(json_data['remark'], json_data['url'])
+                logger.info(f"添加直播间：{json_data['remark']} {json_data['url']}")
+        return False
 
     def get_channel_infos(self, channel):
         channel_id = self.get_channel_id_by_code(channel)
@@ -189,6 +203,8 @@ class Youtube(DownloadBase):
 
 
 VALID_VIDEO_URL_BASE = r'(?:https?://)?(?:(?:www|m)\.)?youtube\.com/watch\?v=(?P<vod_id>.+)'
+
+
 @Plugin.download(regexp=VALID_VIDEO_URL_BASE)
 class YoutubeVideo(DownloadBase):
     def __init__(self, fname, url, suffix='mp4'):
