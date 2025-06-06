@@ -117,13 +117,10 @@ class StreamLink(DownloadBase):
         logger.info(info)
 
         self.raw_stream_url = res.url
-        logger.info(self.raw_stream_url)
         if type(info) is dict and info and 'streams' in info and 'best' in info['streams']:
             self.raw_stream_url = info['streams']['best']['url']
-            logger.info(self.raw_stream_url)
             if '1080p60' in info['streams']:
                 self.raw_stream_url = info['streams']['1080p60']['url']
-                logger.info(self.raw_stream_url)
             self.fake_headers = info['streams']['best']['headers']
             if '1080p60' in info['streams']:
                 self.fake_headers = info['streams']['1080p60']['headers']
@@ -132,7 +129,6 @@ class StreamLink(DownloadBase):
             self.room_title = info['metadata']['title']
 
         logger.info(self.room_title, self.fake_headers, self.room_title, self.raw_stream_url)
-        logger.info(self.raw_stream_url)
 
         return True
 
