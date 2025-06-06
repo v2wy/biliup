@@ -210,21 +210,23 @@ class DownloadBase(ABC):
             file_name = self.gen_download_filename(is_fmt=True)
             args = ['ffmpeg', *input_args, *output_args, f'{file_name}_%d.{self.suffix}']
             logger.debug(args)
-            with subprocess.Popen(args, stdin=subprocess.DEVNULL if not streamlink_proc else streamlink_proc.stdout,
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.DEVNULL) as proc:
-                for line in iter(proc.stdout.readline, b''):  # b'\n'-separated lines
-                    try:
-                        ffmpeg_file_name = line.rstrip().decode(errors='ignore')
-                        time.sleep(1)
-                        # 文件重命名
-                        self.download_file_rename(ffmpeg_file_name, f'{file_name}.{self.suffix}')
-                        self.__download_segment_callback(f'{file_name}.{self.suffix}')
-                        file_name = self.gen_download_filename(is_fmt=True)
-                    except:
-                        logger.error(f'分段事件失败：{self.__class__.__name__} - {self.fname}', exc_info=True)
-            logger.info(f"ffmpeg: {proc.returncode}")
-            return proc.returncode == 0
+            log_file = os.path.join(f"ffmpeg_{self.fname}.log")
+            with open(log_file, 'wb') as stderr_file:
+                with subprocess.Popen(args, stdin=subprocess.DEVNULL if not streamlink_proc else streamlink_proc.stdout,
+                                      stdout=subprocess.PIPE,
+                                      stderr=stderr_file) as proc:
+                    for line in iter(proc.stdout.readline, b''):  # b'\n'-separated lines
+                        try:
+                            ffmpeg_file_name = line.rstrip().decode(errors='ignore')
+                            time.sleep(1)
+                            # 文件重命名
+                            self.download_file_rename(ffmpeg_file_name, f'{file_name}.{self.suffix}')
+                            self.__download_segment_callback(f'{file_name}.{self.suffix}')
+                            file_name = self.gen_download_filename(is_fmt=True)
+                        except:
+                            logger.error(f'分段事件失败：{self.__class__.__name__} - {self.fname}', exc_info=True)
+                logger.info(f"ffmpeg: {proc.returncode}")
+                return proc.returncode == 0
         finally:
             try:
                 if streamlink_proc:
