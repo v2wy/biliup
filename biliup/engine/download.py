@@ -209,6 +209,7 @@ class DownloadBase(ABC):
                 output_args += ['-c', 'copy']
             file_name = self.gen_download_filename(is_fmt=True)
             args = ['ffmpeg', *input_args, *output_args, f'{file_name}_%d.{self.suffix}']
+            logger.debug(args)
             with subprocess.Popen(args, stdin=subprocess.DEVNULL if not streamlink_proc else streamlink_proc.stdout,
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.DEVNULL) as proc:
