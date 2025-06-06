@@ -27,7 +27,7 @@ fake_headers = {
 
 @Plugin.download(regexp=VALID_URL_BASE)
 class Youtube(DownloadBase):
-    def __init__(self, fname, url, suffix='mp4'):
+    def __init__(self, fname, url, suffix='mkv'):
         super().__init__(fname, url, suffix)
         self.ytb_danmaku = config.get('ytb_danmaku', False)
         self.ytb_danmaku = False
@@ -216,7 +216,7 @@ VALID_VIDEO_URL_BASE = r'(?:https?://)?(?:(?:www|m)\.)?youtube\.com/watch\?v=(?P
 
 @Plugin.download(regexp=VALID_VIDEO_URL_BASE)
 class YoutubeVideo(DownloadBase):
-    def __init__(self, fname, url, suffix='mp4'):
+    def __init__(self, fname, url, suffix='mkv'):
         super().__init__(fname, url, suffix)
         self.youtube_cookie = config.get('user', {}).get('youtube_cookie')
 
