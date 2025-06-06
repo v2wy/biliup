@@ -52,8 +52,17 @@ class Youtube(DownloadBase):
         )
         if not isLive:
             return False
+        has_new = False
+        for streaming in streamings:
+            remark = f"{self.fname}[{streaming['video_id']}]"
+            if config['streamers'].get(remark, None):
+                continue
+            has_new = True
+        if not has_new:
+            return False
         with SessionLocal() as db:
             for streaming in streamings:
+                remark = f"{self.fname}[{streaming['video_id']}]"
                 vod_id = streaming['video_id']
                 video_url = f"https://www.youtube.com/watch?v={vod_id}"
                 post_processor = config['streamers'].get(self.fname, {}).get("postprocessor", None)
@@ -64,7 +73,7 @@ class Youtube(DownloadBase):
                     "postprocessor": [
                         {"mv": mv}
                     ],
-                    "remark": f"{self.fname}[{vod_id}]",
+                    "remark": remark,
                     "url": video_url
                 }
 
