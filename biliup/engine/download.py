@@ -171,13 +171,14 @@ class DownloadBase(ABC):
                 streamlink_cmd = [
                     'streamlink',
                     '--stream-segment-threads', '3',
-                    '--hls-playlist-reload-attempts', '1',
+                    '--hls-playlist-reload-attempts', '2',
                     '--http-header',
                     ';'.join([f'{key}={value}' for key, value in self.fake_headers.items()]),
                     self.raw_stream_url,
                     'best',
                     '-O'
                 ]
+                logger.info(streamlink_cmd)
                 streamlink_proc = subprocess.Popen(streamlink_cmd, stdout=subprocess.PIPE)
                 input_args += ['-i', 'pipe:0']
             else:
@@ -221,11 +222,12 @@ class DownloadBase(ABC):
                         file_name = self.gen_download_filename(is_fmt=True)
                     except:
                         logger.error(f'分段事件失败：{self.__class__.__name__} - {self.fname}', exc_info=True)
-
+            logger.info(f"ffmpeg: {proc.returncode}")
             return proc.returncode == 0
         finally:
             try:
                 if streamlink_proc:
+                    logger.info(f"streamlink_proc: 强制终止")
                     streamlink_proc.terminate()
                     streamlink_proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
