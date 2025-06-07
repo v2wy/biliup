@@ -179,6 +179,7 @@ class DownloadBase(ABC):
                     'best',
                     '-O'
                 ]
+                logger.debug(streamlink_cmd)
                 streamlink_proc = subprocess.Popen(streamlink_cmd, stdout=subprocess.PIPE)
                 input_args += ['-i', 'pipe:0']
             else:
@@ -209,6 +210,7 @@ class DownloadBase(ABC):
                 output_args += ['-c', 'copy']
             file_name = self.gen_download_filename(is_fmt=True)
             args = ['ffmpeg', *input_args, *output_args, f'{file_name}_%d.{self.suffix}']
+            logger.debug(args)
             with subprocess.Popen(args, stdin=subprocess.DEVNULL if not streamlink_proc else streamlink_proc.stdout,
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.DEVNULL) as proc:
@@ -223,6 +225,7 @@ class DownloadBase(ABC):
                     except:
                         logger.error(f'分段事件失败：{self.__class__.__name__} - {self.fname}', exc_info=True)
 
+            logger.debug(f"ffmpeg: {proc.returncode}")
             return proc.returncode == 0
         finally:
             try:
