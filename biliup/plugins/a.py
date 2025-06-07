@@ -222,14 +222,23 @@ class Pandalive(StreamLink):
     pass
 
 
-# https://www.sooplive.com/t3xture
+
 # https://www.sooplive.com/video/120240
-@Plugin.download(regexp=r'(?:https?://)?(?:(?:www|go|m)\.)?tiktok\.com/@(?P<id>[0-9_a-zA-Z]+)/live')
-class SoopliveGlobal(StreamLink):
+@Plugin.download(regexp=r'(?:https?://)?(?:(?:www)\.)?sooplive\.com/video/(?P<id>[0-9]+)')
+class SoopliveGlobalVod(StreamLink):
     def __init__(self, fname, url, suffix='mkv'):
         super().__init__(fname, url, suffix)
         self.is_download = True
         self.downloader = 'streamlink'
+
+# https://www.sooplive.com/t3xture
+@Plugin.download(regexp=r'(?:https?://)?(?:(?:www)\.)?sooplive\.com/(?P<id>[0-9_a-zA-Z]+)')
+class SoopliveGlobalVod(StreamLink):
+    def __init__(self, fname, url, suffix='mkv'):
+        super().__init__(fname, url, suffix)
+        self.is_download = False
+        self.downloader = 'streamlink'
+
 
 
 # https://weibo.com/l/wblive/p/show/1022:2321325160014053769290
