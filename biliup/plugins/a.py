@@ -231,9 +231,54 @@ class SoopliveGlobalVod(StreamLink):
         self.is_download = True
         self.downloader = 'streamlink'
 
+    async def acheck_stream(self, is_check=False):
+        loop = asyncio.get_running_loop()
+        try:
+            plugin_name, plugin_type, url = await loop.run_in_executor(
+                None,  # 使用默认线程池
+                lambda: self.session.resolve_url(self.url)
+            )
+            logger.debug(f'{url}匹配到插件 ' + plugin_name)
+        except NoPluginError:
+            logger.error('url没有匹配到插件 ' + self.url)
+            return False
+
+        streams = await loop.run_in_executor(
+            None,  # 使用默认线程池
+            lambda: self.session.streams(self.url)
+        )
+        if streams is None:
+            return False
+
+        res = streams.get('best')
+
+        if res is None:
+            return False
+
+        result = await loop.run_in_executor(
+            None,  # 使用默认线程池
+            lambda: subprocess.run(
+                ['streamlink', '--plugin-dir', 'streamlink_plugins', '-j', '--twitch-proxy-playlist',
+                 'https://eu.luminous.dev', url],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout
+        )
+
+        info = json.loads(result)
+
+        logger.info(info)
+
+        self.raw_stream_url = self.url
+        self.room_title = ''
+        if type(info) is dict and info and 'metadata' in info and 'title' in info['metadata']:
+            self.room_title = info['metadata']['title']
+
+        logger.info(self.room_title, self.fake_headers, self.room_title)
+        return True
+
+
 # https://www.sooplive.com/t3xture
 @Plugin.download(regexp=r'(?:https?://)?(?:(?:www)\.)?sooplive\.com/(?P<id>[0-9_a-zA-Z]+)')
-class SoopliveGlobalVod(StreamLink):
+class SoopliveGlobal(SoopliveGlobalVod):
     def __init__(self, fname, url, suffix='mkv'):
         super().__init__(fname, url, suffix)
         self.is_download = False
