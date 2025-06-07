@@ -172,7 +172,7 @@ class DownloadBase(ABC):
                     'streamlink',
                     '--stream-segment-threads', '3',
                     '--hls-playlist-reload-attempts', '2',
-                    '--plugin-dir', "streamlink_plugins"
+                    '--plugin-dir', "streamlink_plugins",
                     '--http-header',
                     ';'.join([f'{key}={value}' for key, value in self.fake_headers.items()]),
                     self.raw_stream_url,

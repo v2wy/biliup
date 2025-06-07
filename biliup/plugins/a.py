@@ -272,7 +272,6 @@ class SoopliveGlobalVod(StreamLink):
         if type(info) is dict and info and 'metadata' in info and 'title' in info['metadata']:
             self.room_title = info['metadata']['title']
 
-        logger.info(self.room_title, self.fake_headers, self.room_title)
         return True
 
 
