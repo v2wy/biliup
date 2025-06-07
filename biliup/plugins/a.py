@@ -20,7 +20,7 @@ class Ytdlp(DownloadBase):
         DownloadBase.__init__(self, fname, url, suffix=suffix)
         self.youtube_cookie = config.get('user', {}).get('youtube_cookie')
 
-        self.is_download = True
+        self.is_download = False
         self.downloader = 'ffmpeg'
 
     async def acheck_stream(self, is_check=False):
@@ -77,7 +77,7 @@ class StreamLink(DownloadBase):
         if os.path.exists(streamlink_plugins_dir):
             self.session.plugins.load_path(streamlink_plugins_dir)
 
-        self.is_download = True
+        self.is_download = False
         self.downloader = 'ffmpeg'
 
     async def acheck_stream(self, is_check=False):
@@ -137,7 +137,6 @@ class StreamGet(DownloadBase):
     def __init__(self, fname, url, suffix='mkv'):
         DownloadBase.__init__(self, fname, url, suffix=suffix)
 
-        self.is_download = True
         self.downloader = 'ffmpeg'
 
     async def acheck_stream(self, is_check=False):
@@ -160,7 +159,7 @@ class Twitcasting(Ytdlp):
 class X17Live(Ytdlp):
     def __init__(self, fname, url, suffix='mkv'):
         super().__init__(fname, url, suffix)
-        self.is_download = False
+
         self.downloader = 'stream-gears'
 
 
@@ -169,7 +168,7 @@ class X17Live(Ytdlp):
 class Chzzk(Ytdlp):
     def __init__(self, fname, url, suffix='mkv'):
         super().__init__(fname, url, suffix)
-        self.is_download = False
+
         self.downloader = 'streamlink'
 
 
@@ -221,6 +220,16 @@ class Tiktok(StreamLink):
 @Plugin.download(regexp=r'(?:https?://)?(?:(?:www)\.)?pandalive\.co\.kr/live/play/(?P<id>[0-9_a-zA-Z]+)')
 class Pandalive(StreamLink):
     pass
+
+
+# https://www.sooplive.com/t3xture
+# https://www.sooplive.com/video/120240
+@Plugin.download(regexp=r'(?:https?://)?(?:(?:www|go|m)\.)?tiktok\.com/@(?P<id>[0-9_a-zA-Z]+)/live')
+class SoopliveGlobal(StreamLink):
+    def __init__(self, fname, url, suffix='mkv'):
+        super().__init__(fname, url, suffix)
+        self.is_download = True
+        self.downloader = 'streamlink'
 
 
 # https://weibo.com/l/wblive/p/show/1022:2321325160014053769290
