@@ -1,18 +1,18 @@
 import asyncio
+import re
+from urllib.parse import urlparse
 
+import requests
 import yt_dlp
+from streamlink.plugin.api import validate
 
+from biliup.app import context
 from biliup.config import config
+from . import logger
 from ..database.db import SessionLocal
 from ..database.models import LiveStreamers
 from ..engine.decorators import Plugin
-from . import logger
 from ..engine.download import DownloadBase
-import requests
-from urllib.parse import urlparse
-from streamlink.plugin.api import validate
-import re
-from biliup.app import context
 
 VALID_URL_BASE = r'(?:https?://)?(?:(?:www|m)\.)?youtube\.com/@(?P<id>.+)(\/.*)?'
 session = requests.session()
@@ -66,17 +66,16 @@ class Youtube(DownloadBase):
                 vod_id = streaming['video_id']
                 video_url = f"https://www.youtube.com/watch?v={vod_id}"
                 post_processor = config['streamers'].get(self.fname, {}).get("postprocessor", None)
-                mv = 'baidu'
-                if post_processor:
-                    mv = post_processor[0]['mv']
+                _format = config['streamers'].get(self.fname, {}).get("format", None)
+                mv = post_processor[0]['mv'] if post_processor else 'baidu'
                 json_data = {
                     "postprocessor": [
                         {"mv": mv}
                     ],
                     "remark": remark,
-                    "url": video_url
+                    "url": video_url,
+                    "format": _format
                 }
-
                 to_save = LiveStreamers(**LiveStreamers.filter_parameters(json_data))
                 db.add(to_save)
             try:
@@ -223,7 +222,6 @@ class YoutubeVideo(DownloadBase):
     async def acheck_stream(self, is_check=False):
         vod_id = re.match(VALID_VIDEO_URL_BASE, self.url).group('vod_id')
         with yt_dlp.YoutubeDL({
-            'download_archive': 'archive.txt',
             'cookiefile': self.youtube_cookie,
             'ignoreerrors': True,
             'extractor_retries': 0,
@@ -232,9 +230,27 @@ class YoutubeVideo(DownloadBase):
             info = ydl.extract_info(video_url, download=False)
             if not info:
                 return False
+        if info['media_type'] != 'livestream':
+            logger.warning("改视频不是直播流，删除该录播")
+            self.del_streamer()
+            return False
         live_status = info['live_status']
         if live_status == 'is_live':
             self.raw_stream_url = info['url']
             self.room_title = info['title']
             return True
+        elif live_status == 'was_live':
+            logger.warning("改直播流已结束，删除该录播")
+            self.del_streamer()
+            return False
         return False
+
+    def del_streamer(self):
+        _id = config['streamers'].get(self.fname, {}).get("id", None)
+        if id is not None:
+            with SessionLocal() as db:
+                org = db.get(LiveStreamers, _id)
+                db.delete(org)
+                db.commit()
+                context['PluginInfo'].delete(org.url)
+            config.load_from_db(db)
