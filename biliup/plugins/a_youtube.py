@@ -232,7 +232,7 @@ class YoutubeVideo(DownloadBase):
             if not info:
                 return False
         if info['media_type'] != 'livestream':
-            logger.warning("改视频不是直播流，删除该录播")
+            logger.warning(f"改直播流已结束，删除该录播 {self.fname} {self.url}")
             self.del_streamer()
             return False
         live_status = info['live_status']
@@ -241,7 +241,7 @@ class YoutubeVideo(DownloadBase):
             self.room_title = info['title']
             return True
         elif live_status == 'was_live':
-            logger.warning("改直播流已结束，删除该录播")
+            logger.warning(f"改直播流已结束，删除该录播 {self.fname} {self.url}")
             self.del_streamer()
             return False
         return False
