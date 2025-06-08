@@ -108,6 +108,14 @@ class DownloadBase(ABC):
         logger.info(f"{self.plugin_msg}: Start downloading {self.raw_stream_url}")
         # 调试使用边录边上传功能
         # self.downloader = 'sync-downloader'
+        if self.downloader == 'ytarchive':
+            if not shutil.which("ytarchive"):
+                logger.error("未安装 ytarchive 或不存在于 PATH 内")
+                logger.debug("Current user's PATH is:" + os.getenv("PATH"))
+                return False
+            else:
+                return self.ytarchive_download()
+
         if self.is_download:
             if not shutil.which("ffmpeg"):
                 logger.error("未安装 FFMpeg 或不存在于 PATH 内")
@@ -236,6 +244,25 @@ class DownloadBase(ABC):
                 streamlink_proc.kill()
             except:
                 logger.exception(f'terminate {self.fname} failed')
+
+    def ytarchive_download(self):
+        file_name = self.gen_download_filename(is_fmt=True)
+        with open("ytarchive_download.log", 'a') as tdl:
+            ytarchive_cmd = [
+                'ytarchive',
+                '-w',
+                '--threads', '3',
+                '-c', self.youtube_cookie,
+                '-o', f'{file_name}_0',
+                self.url,
+                '1080p60/best',
+            ]
+            logger.debug(ytarchive_cmd)
+            ytarchive_proc = subprocess.Popen(ytarchive_cmd, stdout=tdl)
+        returncode = ytarchive_proc.wait()
+        if os.path.exists(f'{file_name}_0.mp4'):
+            shutil.move(f'{file_name}_0.mp4', f'{file_name}.mp4')
+        return returncode == 0
 
     def ffmpeg_download(self, use_streamlink=False):
         # streamlink进程

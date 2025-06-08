@@ -178,6 +178,7 @@ const OverrideModal: React.FC<TemplateModalProps> = ({ children, entity, onOk })
         showClear={true}
       >
         <Select.Option value="streamlink">streamlink（hls多线程下载）</Select.Option>
+        <Select.Option value="ytarchive">ytarchive</Select.Option>
         <Select.Option value="ffmpeg">ffmpeg</Select.Option>
         <Select.Option value="stream-gears">stream-gears（默认）</Select.Option>
         <Select.Option value="sync-downloader">sync-downloader（边录边传）</Select.Option>
