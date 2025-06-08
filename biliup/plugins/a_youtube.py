@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 import requests
 import yt_dlp
+from sqlalchemy import select
 from streamlink.plugin.api import validate
 
 from biliup.app import context
@@ -246,11 +247,19 @@ class YoutubeVideo(DownloadBase):
         return False
 
     def del_streamer(self):
-        _id = config['streamers'].get(self.fname, {}).get("id", None)
-        if id is not None:
-            with SessionLocal() as db:
-                org = db.get(LiveStreamers, _id)
-                db.delete(org)
+        with SessionLocal() as db:
+            result = db.scalars(select(LiveStreamers))
+            target = None
+            for ls in result:
+                temp = ls.as_dict()
+                remark = temp['remark']
+                if remark == self.fname:
+                    target = temp
+                    break
+            if target:
+                # org = db.get(LiveStreamers, target)
+                db.delete(target)
                 db.commit()
-                context['PluginInfo'].delete(org.url)
-            config.load_from_db(db)
+                context['PluginInfo'].delete(target.url)
+                config.load_from_db(db)
+
