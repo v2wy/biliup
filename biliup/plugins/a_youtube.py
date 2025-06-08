@@ -257,9 +257,9 @@ class YoutubeVideo(DownloadBase):
                     target = temp
                     break
             if target:
-                # org = db.get(LiveStreamers, target)
-                db.delete(target)
+                org = db.get(LiveStreamers, target["id"])
+                db.delete(org)
                 db.commit()
-                context['PluginInfo'].delete(target.url)
+                context['PluginInfo'].delete(org.url)
                 config.load_from_db(db)
 
