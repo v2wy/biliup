@@ -34,6 +34,8 @@ class SoopliveGlobal(Plugin):
     def is_online(self, channel: str):
         url = f'https://www.sooplive.com/{channel}'
         res = self.session.http.get(url)
+        if res.cookies.get('client-id') is None:
+            return False, None, None, None, None
         self.session.http.headers.update({"Client-Id": res.cookies['client-id']})
         url = f'https://api.sooplive.com/v2/stream/info/{channel}'
         stream_info = self.session.http.get(url).json()
@@ -51,6 +53,8 @@ class SoopliveGlobal(Plugin):
     def get_vod_info(self, vod_id):
         url = f'https://www.sooplive.com/video/{vod_id}'
         res = self.session.http.get(url)
+        if res.cookies.get('client-id') is None:
+            return None, None, None, None
         self.session.http.headers.update({"Client-Id": res.cookies['client-id']})
         url = f'https://api.sooplive.com/vod/info/{vod_id}'
         data = self.session.http.get(url).json()
@@ -66,6 +70,9 @@ class SoopliveGlobal(Plugin):
             playlist_m3u8_url = f"https://global-media.sooplive.com/vod/{vod_id}/master.m3u8"
             playlist = HLSStream.parse_variant_playlist(self.session, url=playlist_m3u8_url)
             self.id, self.author, self.title, self.category = self.get_vod_info(vod_id)
+            if self.id is None:
+                log.error("This video is currently unavailable")
+                return
             for k, stream in playlist.items():
                 yield k, stream
             return
