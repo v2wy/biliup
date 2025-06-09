@@ -208,7 +208,7 @@ class Kick(StreamLink):
 
 
 # https://www.tiktok.com/@ignobitaofficial/live
-@Plugin.download(regexp=r'(?:https?://)?(?:(?:www|go|m)\.)?tiktok\.com/@(?P<id>[0-9_a-zA-Z]+)/live')
+@Plugin.download(regexp=r'(?:https?://)?(?:(?:www|go|m)\.)?tiktok\.com/@(?P<id>[0-9_a-zA-Z.]+)(/live)?')
 class Tiktok(StreamLink):
     def __init__(self, fname, url, suffix='mkv'):
         super().__init__(fname, url, suffix)
