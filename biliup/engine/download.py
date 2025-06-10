@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import queue
+import random
 import re
 import subprocess
 import threading
@@ -110,6 +111,14 @@ class DownloadBase(ABC):
         logger.info(f"{self.plugin_msg}: Request url - {self.raw_stream_url}")
         # 调试使用边录边上传功能
         # self.downloader = 'sync-downloader'
+        if self.downloader == 'ytarchive':
+            if not shutil.which("ytarchive"):
+                logger.error("未安装 ytarchive 或不存在于 PATH 内")
+                logger.debug("Current user's PATH is:" + os.getenv("PATH"))
+                return False
+            else:
+                return self.ytarchive_download()
+
         if self.is_download:
             if not shutil.which("ffmpeg"):
                 logger.error("未安装 FFMpeg 或不存在于 PATH 内")
@@ -141,8 +150,8 @@ class DownloadBase(ABC):
                     return True
                 # streamlink无法处理flv,所以回退到ffmpeg
                 if self.downloader == 'streamlink' and '.flv' not in parsed_url_path:
-                    return self.ffmpeg_download(use_streamlink=True)
-                return self.ffmpeg_download()
+                    return self.ffmpeg_segment_download(use_streamlink=True)
+                return self.ffmpeg_segment_download()
 
         if '.flv' in parsed_url_path:
             # 假定flv流
@@ -156,54 +165,107 @@ class DownloadBase(ABC):
                               lambda file_name: self.__download_segment_callback(file_name))
         return True
 
-    def ffmpeg_segment_download(self):
+    def ffmpeg_segment_download(self, use_streamlink=False):
+        streamlink_proc = None
         # TODO 无日志
         # , '-report'
         # ffmpeg 输入参数
-        input_args = [
-            '-loglevel', 'quiet', '-y'
-        ]
-        # ffmpeg 输出参数
-        output_args = [
-            '-bsf:a', 'aac_adtstoasc'
-        ]
-        input_args += ['-headers', ''.join('%s: %s\r\n' % x for x in self.fake_headers.items()),
-                       '-rw_timeout', '20000000']
-        if '.m3u8' in urlparse(self.raw_stream_url).path:
-            input_args += ['-max_reload', '1000']
+        try:
+            input_args = [
+                '-loglevel', 'quiet', '-y'
+            ]
+            # ffmpeg 输出参数
+            output_args = [
+                '-bsf:a', 'aac_adtstoasc'
+            ]
+            if use_streamlink and '.flv' not in urlparse(self.raw_stream_url).path:
+                streamlink_cmd = [
+                    'streamlink',
+                    '--stream-segment-threads', '3',
+                    '--hls-playlist-reload-attempts', '2',
+                    '--plugin-dir', "streamlink_plugins",
+                    '--http-header',
+                    ';'.join([f'{key}={value}' for key, value in self.fake_headers.items()]),
+                    self.raw_stream_url,
+                    'best',
+                    '-O'
+                ]
+                logger.debug(streamlink_cmd)
+                streamlink_proc = subprocess.Popen(streamlink_cmd, stdout=subprocess.PIPE)
+                input_args += ['-i', 'pipe:0']
+            else:
+                input_args += ['-headers', ''.join('%s: %s\r\n' % x for x in self.fake_headers.items()),
+                               '-rw_timeout', '20000000']
+                if '.m3u8' in urlparse(self.raw_stream_url).path:
+                    input_args += ['-max_reload', '1000']
+                input_args += ['-i', self.raw_stream_url]
+            output_args += ['-f', 'segment']
+            # output_args += ['-segment_format', self.suffix]
+            output_args += ['-segment_list', 'pipe:1']
+            output_args += ['-segment_list_type', 'flat']
+            output_args += ['-reset_timestamps', '1']
+            # output_args += ['-strftime', '1']
+            if self.segment_time:
+                output_args += ['-segment_time', self.segment_time]
+            else:
+                # 避免适配两套
+                output_args += ['-segment_time', '9999:00:00']
 
-        input_args += ['-i', self.raw_stream_url]
+            if len(self.opt_args) > 0:
+                output_args += self.opt_args
+                if '-preset' not in self.opt_args:
+                    output_args += ['-preset', 'ultrafast']
+                if '-crf' not in self.opt_args:
+                    output_args += ['-crf', '23']
+            else:
+                output_args += ['-c', 'copy']
+            file_name = self.gen_download_filename(is_fmt=True)
+            args = ['ffmpeg', *input_args, *output_args, f'{file_name}_%d.{self.suffix}']
+            logger.debug(args)
+            with subprocess.Popen(args, stdin=subprocess.DEVNULL if not streamlink_proc else streamlink_proc.stdout,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.DEVNULL) as proc:
+                for line in iter(proc.stdout.readline, b''):  # b'\n'-separated lines
+                    try:
+                        ffmpeg_file_name = line.rstrip().decode(errors='ignore')
+                        time.sleep(1)
+                        # 文件重命名
+                        self.download_file_rename(ffmpeg_file_name, f'{file_name}.{self.suffix}')
+                        self.__download_segment_callback(f'{file_name}.{self.suffix}')
+                        file_name = self.gen_download_filename(is_fmt=True)
+                    except:
+                        logger.error(f'分段事件失败：{self.__class__.__name__} - {self.fname}', exc_info=True)
 
-        output_args += ['-f', 'segment']
-        # output_args += ['-segment_format', self.suffix]
-        output_args += ['-segment_list', 'pipe:1']
-        output_args += ['-segment_list_type', 'flat']
-        output_args += ['-reset_timestamps', '1']
-        # output_args += ['-strftime', '1']
-        if self.segment_time:
-            output_args += ['-segment_time', self.segment_time]
-        else:
-            # 避免适配两套
-            output_args += ['-segment_time', '9999:00:00']
+            logger.debug(f"ffmpeg: {proc.returncode}")
+            return proc.returncode == 0
+        finally:
+            try:
+                if streamlink_proc:
+                    streamlink_proc.terminate()
+                    streamlink_proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                streamlink_proc.kill()
+            except:
+                logger.exception(f'terminate {self.fname} failed')
 
-        output_args += ['-c', 'copy']
-        output_args += self.opt_args
+    def ytarchive_download(self):
         file_name = self.gen_download_filename(is_fmt=True)
-        args = ['ffmpeg', *input_args, *output_args, f'{file_name}_%d.{self.suffix}']
-        with subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                              stderr=subprocess.DEVNULL) as proc:
-            for line in iter(proc.stdout.readline, b''):  # b'\n'-separated lines
-                try:
-                    ffmpeg_file_name = line.rstrip().decode(errors='ignore')
-                    time.sleep(1)
-                    # 文件重命名
-                    self.download_file_rename(ffmpeg_file_name, f'{file_name}.{self.suffix}')
-                    self.__download_segment_callback(f'{file_name}.{self.suffix}')
-                    file_name = self.gen_download_filename(is_fmt=True)
-                except:
-                    logger.error(f'分段事件失败：{self.__class__.__name__} - {self.fname}', exc_info=True)
-
-        return proc.returncode == 0
+        with open("ytarchive_download.log", 'a') as tdl:
+            ytarchive_cmd = [
+                'ytarchive',
+                '-w',
+                '--threads', '3',
+                '-c', self.youtube_cookie,
+                '-o', f'{file_name}_0',
+                self.url,
+                '1080p60/best',
+            ]
+            logger.debug(ytarchive_cmd)
+            ytarchive_proc = subprocess.Popen(ytarchive_cmd, stdout=tdl)
+        returncode = ytarchive_proc.wait()
+        if os.path.exists(f'{file_name}_0.mp4'):
+            shutil.move(f'{file_name}_0.mp4', f'{file_name}.mp4')
+        return returncode == 0
 
     def ffmpeg_download(self, use_streamlink=False):
         # streamlink进程
@@ -227,9 +289,8 @@ class DownloadBase(ABC):
                 streamlink_cmd = [
                     'streamlink',
                     '--stream-segment-threads', '3',
-                    '--hls-playlist-reload-attempts', '1',
-                    # '--http-proxy', 'http://127.0.0.1:7890',
-                    # '--hls-live-restart',
+                    # '--hls-playlist-reload-attempts', '1' # 重新加载 HLS 播放列表之前放弃的最大尝试次数。
+                    '--stream-timeout', '20',
                 ]
                 for key, value in self.fake_headers.items():
                     streamlink_cmd.extend(['--http-header', f'{key}={value}'])
@@ -328,7 +389,7 @@ class DownloadBase(ABC):
 
     def run(self):
         try:
-            if not asyncio.run_coroutine_threadsafe(self.acheck_stream(), loop).result() or not self.should_record():
+            if not self.should_record() or not asyncio.run_coroutine_threadsafe(self.acheck_stream(), loop).result():
                 return False
             with SessionLocal() as db:
                 update_room_title(db, self.database_row_id, self.room_title)
@@ -512,6 +573,62 @@ class DownloadBase(ABC):
 
     def close(self):
         pass
+
+    def conf(self, k: str, file_path='conf.json'):
+        """
+            读取并解析 JSON 格式的配置文件。
+
+            Args:
+                file_path (str): 配置文件的路径，默认为 'config.json'。
+
+            Returns:
+                dict: 解析后的配置字典。如果出错，返回 None。
+
+            异常处理:
+                - 文件不存在时打印错误信息。
+                - JSON 格式错误时打印错误信息。
+                - 其他错误（如权限问题）捕获并提示。
+            """
+        if not os.path.exists(file_path):
+            return None
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                conf = json.load(f)
+                if k not in conf:
+                    return None
+                return conf[k]
+        except FileNotFoundError:
+            logger.error(f"错误：配置文件 '{file_path}' 不存在，请检查路径。")
+        except json.JSONDecodeError:
+            logger.error(f"错误：配置文件 '{file_path}' 格式不正确，请验证 JSON 语法。")
+        except Exception as e:
+            logger.error(f"未知错误：读取配置文件时发生意外错误 - {str(e)}")
+
+        return None
+
+    def get_random_proxy(self):
+        """
+        从 proxies.txt 中随机读取一个代理配置，返回格式为字典：
+        {
+            "http": "socks5://user:pass@ip:port",
+            "https": "socks5://user:pass@ip:port"
+        }
+        如果文件不存在或内容无效，返回 None。
+        """
+        # 检查文件是否存在
+        proxies = self.conf('proxies')
+        if not proxies:
+            return None
+
+        # 随机选择一个代理
+        proxy = random.choice(proxies)
+        logger.info(f"选择了代理：{proxy}")
+
+        # 构造代理字典（同时支持 HTTP/HTTPS）
+        return {
+            "http": proxy,
+            "https": proxy
+        }
 
 
 def stream_gears_download(url, headers, file_name, segment_time=None, file_size=None,

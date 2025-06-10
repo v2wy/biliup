@@ -16,6 +16,7 @@ def download(fname, url, **kwargs):
             for k in pg.__dict__:
                 if kwargs.get(k):
                     pg.__dict__[k] = kwargs.get(k)
+            break
     if not pg:
         pg = general.__plugin__(fname, url)
         logger.warning(f'Not found plugin for {fname} -> {url} This may cause problems')
