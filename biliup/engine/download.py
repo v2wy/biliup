@@ -556,9 +556,9 @@ class DownloadBase(ABC):
                 if os.path.exists(f"{fmt_file_name}.{self.suffix}"):
                     file_time += 1
                 else:
-                    filename = fmt_file_name
-                    break
-        return filename.encode("unicode-escape").decode()
+                    return fmt_file_name
+        else:
+            return filename
 
     @staticmethod
     def download_file_rename(old_file_name, file_name):
