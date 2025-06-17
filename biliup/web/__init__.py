@@ -142,9 +142,9 @@ def check_similar_remark(json_data):
     _cache = copy.deepcopy(config['streamers'])
     for fname, data in _cache.items():
         if (
-            json_data['remark'] in fname
-            or
-            fname in json_data['remark']
+            json_data['remark'] == fname
+            # or
+            # fname in json_data['remark']
         ) and (
             json_data['url'] != data['url']
         ):
