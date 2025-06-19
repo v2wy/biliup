@@ -213,7 +213,7 @@ class Tiktok(StreamLink):
     def __init__(self, fname, url, suffix='mkv'):
         super().__init__(fname, url, suffix)
         self.is_download = False
-        self.downloader = 'stream-gears'
+        self.downloader = 'ffmpeg'
 
 
 # https://www.pandalive.co.kr/live/play/queen486
