@@ -108,7 +108,7 @@ class StreamLink(DownloadBase):
             None,  # 使用默认线程池
             lambda: subprocess.run(
                 ['streamlink', '--plugin-dir', 'streamlink_plugins', '-j', '--twitch-proxy-playlist',
-                 'https://eu.luminous.dev', url],
+                 'https://lb-eu3.cdn-perfprod.com,https://eu2.luminous.dev,', url],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout
         )
 
@@ -258,8 +258,7 @@ class SoopliveGlobalVod(StreamLink):
         result = await loop.run_in_executor(
             None,  # 使用默认线程池
             lambda: subprocess.run(
-                ['streamlink', '--plugin-dir', 'streamlink_plugins', '-j', '--twitch-proxy-playlist',
-                 'https://eu.luminous.dev', url],
+                ['streamlink', '--plugin-dir', 'streamlink_plugins', '-j', url],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout
         )
 
