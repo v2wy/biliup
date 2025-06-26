@@ -300,8 +300,12 @@ class Weibo(StreamGet):
         streaminfo = data['play_url_list'][-1]
         if streaminfo.get("m3u8_url"):
             self.raw_stream_url = streaminfo.get("m3u8_url")
-        if streaminfo.get("flv_url"):
+            if streaminfo.get("m3u8_url").endswith('.m3u8.m3u8'):
+                self.raw_stream_url = self.raw_stream_url.replace('.m3u8.m3u8', '.m3u8')
+        elif streaminfo.get("flv_url"):
             self.raw_stream_url = streaminfo.get("flv_url")
+            if streaminfo.get("flv_url").endswith('.flv.flv'):
+                self.raw_stream_url = self.raw_stream_url.replace('.flv.flv', '.flv')
         self.room_title = data['title'] if 'title' in data else ''
         return True
 
