@@ -1,124 +1,84 @@
-import time
-import traceback
-from typing import Optional, Dict
+import asyncio
+import json
+import subprocess
 
-import requests
+import streamlink
+from streamlink import NoPluginError
 
-import biliup.common.util
 from biliup.config import config
-from ..common import tools
-from ..common.tools import NamedLock
 from ..engine.decorators import Plugin
 from ..engine.download import DownloadBase
-from ..plugins import match1, logger
-
-# VALID_URL_BASE = r"https?://(.*?)\.afreecatv\.com/(?P<username>\w+)(?:/\d+)?"
-# https://play.sooplive.co.kr/khm11903/279233366
-VALID_URL_BASE = r"https?://play\.sooplive\.co\.kr/(?P<username>\w+)(?:/\d+)?"
-CHANNEL_API_URL = "https://live.afreecatv.com/afreeca/player_live_api.php"
-
-QUALITIES = ["original", "hd4k", "hd", "sd"]
+from ..plugins import logger
 
 
 @Plugin.download(regexp=r"https?://(.*?)\.sooplive\.co\.kr/(?P<username>\w+)(?:/\d+)?")
-class AfreecaTV(DownloadBase):
-    def __init__(self, fname, url, suffix='mp4'):
-        super().__init__(fname, url, suffix)
-        if AfreecaTVUtils.get_cookie():
-            self.fake_headers['cookie'] = ';'.join(
-                [f"{name}={value}" for name, value in AfreecaTVUtils.get_cookie().items()])
+class SoopliveKr(DownloadBase):
+    session: streamlink.session.Streamlink
+    username: str
+    password: str
 
-        self.is_download = True
-        self.downloader = 'ffmpeg'
+    def __init__(self, fname, url, suffix='mkv'):
+        self.username = config.get('user', {}).get('afreecatv_username', '')
+        self.password = config.get('user', {}).get('afreecatv_password', '')
+        DownloadBase.__init__(self, fname, url, suffix=suffix)
+        self.session = streamlink.session.Streamlink({
+            'stream-segment-timeout': 60,
+            'hls-segment-queue-threshold': 10,
+            'stream-segment-threads': 3,
+            'soop-username': self.username,
+            'soop-password': self.password,
+        })
+
+        self.is_download = False
+        self.downloader = 'streamlink'
 
     async def acheck_stream(self, is_check=False):
+        loop = asyncio.get_running_loop()
         try:
-            username = match1(self.url, VALID_URL_BASE)
-            if not username:
-                logger.warning(f"{AfreecaTV.__name__}: {self.url}: 直播间地址错误")
-                return False
-
-            channel_info = (await biliup.common.util.client.post(CHANNEL_API_URL, data={
-                "bid": username,
-                "bno": "",
-                "type": "live",
-                "pwd": "",
-                "player_type": "html5",
-                "stream_type": "common",
-                "quality": QUALITIES[0],
-                "mode": "landing",
-                "from_api": 0,
-            }, headers=self.fake_headers, timeout=5)).json()
-
-            if channel_info["CHANNEL"]["RESULT"] == -6:
-                logger.warning(f"{AfreecaTV.__name__}: {self.url}: 检测失败,请检查账号密码设置")
-                return False
-
-            if channel_info["CHANNEL"]["RESULT"] != 1:
-                return False
-
-            self.room_title = channel_info["CHANNEL"]["TITLE"]
-
-            aid_info = (await biliup.common.util.client.post(CHANNEL_API_URL, data={
-                "bid": username,
-                "bno": channel_info["CHANNEL"]["BNO"],
-                "type": "aid",
-                "pwd": "",
-                "player_type": "html5",
-                "stream_type": "common",
-                "quality": QUALITIES[0],
-                "mode": "landing",
-                "from_api": 0,
-            }, headers=self.fake_headers, timeout=5)).json()
-
-            view_info = (
-                await biliup.common.util.client.get(f'{channel_info["CHANNEL"]["RMD"]}/broad_stream_assign.html',
-                                                    params={
-                                                        "return_type": channel_info["CHANNEL"]["CDN"],
-                                                        "broad_key": f'{channel_info["CHANNEL"]["BNO"]}-common-{QUALITIES[0]}-hls'
-                                                    }, headers=self.fake_headers, timeout=5)).json()
-
-            self.raw_stream_url = view_info["view_url"] + "?aid=" + aid_info["CHANNEL"]["AID"]
-        except:
-            logger.warning(f"{AfreecaTV.__name__}: {self.url}: 获取错误，本次跳过")
-            traceback.print_exc()
+            plugin_name, plugin_type, url = await loop.run_in_executor(
+                None,  # 使用默认线程池
+                lambda: self.session.resolve_url(self.url)
+            )
+            logger.debug(f'{url}匹配到插件 ' + plugin_name)
+        except NoPluginError:
+            logger.error('url没有匹配到插件 ' + self.url)
             return False
 
+        streams = await loop.run_in_executor(
+            None,  # 使用默认线程池
+            lambda: self.session.streams(self.url)
+        )
+        if streams is None:
+            return False
+
+        res = streams.get('best')
+
+        if res is None:
+            return False
+
+        result = await loop.run_in_executor(
+            None,  # 使用默认线程池
+            lambda: subprocess.run(
+                ['streamlink', '--soop-username', self.username, '--soop-password', self.password, '-j', url],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout
+        )
+
+        info = json.loads(result)
+
+        logger.info(info)
+
+        self.raw_stream_url = res.url
+        if type(info) is dict and info and 'streams' in info and 'best' in info['streams']:
+            self.raw_stream_url = info['streams']['best']['url']
+            if '1080p60' in info['streams']:
+                self.raw_stream_url = info['streams']['1080p60']['url']
+            self.fake_headers = info['streams']['best']['headers']
+            if '1080p60' in info['streams']:
+                self.fake_headers = info['streams']['1080p60']['headers']
+        self.room_title = ''
+        if type(info) is dict and info and 'metadata' in info and 'title' in info['metadata']:
+            self.room_title = info['metadata']['title']
+
+        logger.info(self.room_title, self.fake_headers, self.room_title)
+
         return True
-
-
-class AfreecaTVUtils:
-    _cookie: Optional[Dict[str, str]] = None
-    _cookie_expires = None
-
-    @staticmethod
-    def get_cookie() -> Optional[Dict[str, str]]:
-        with NamedLock("AfreecaTV_cookie_get"):
-            if not AfreecaTVUtils._cookie or AfreecaTVUtils._cookie_expires <= time.time():
-                username = config.get('user', {}).get('afreecatv_username', '')
-                password = config.get('user', {}).get('afreecatv_password', '')
-                if not username or not password:
-                    return None
-                response = requests.post("https://login.afreecatv.com/app/LoginAction.php", data={
-                    "szUid": username,
-                    "szPassword": password,
-                    "szWork": "login",
-                    "szType": "json",
-                    "isSaveId": "true",
-                    "isSavePw": "true",
-                    "isSaveJoin": "true",
-                    "isLoginRetain": "Y",
-                })
-                if response.json()["RESULT"] != 1:
-                    return None
-
-                cookie_dict = response.cookies.get_dict()
-                AfreecaTVUtils._cookie = {
-                    "RDB": cookie_dict["RDB"],
-                    "PdboxBbs": cookie_dict["PdboxBbs"],
-                    "PdboxTicket": cookie_dict["PdboxTicket"],
-                    "PdboxSaveTicket": cookie_dict["PdboxSaveTicket"],
-                }
-                AfreecaTVUtils._cookie_expires = time.time() + (7 * 24 * 60 * 60)
-
-            return AfreecaTVUtils._cookie
